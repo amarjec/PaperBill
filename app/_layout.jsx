@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
+import { AppProvider } from "../src/context/AppContext";
 import { View, ActivityIndicator } from "react-native";
 import "../global.css";
 
@@ -58,7 +59,9 @@ function RootNavigation() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigation />
+      <AppProvider> 
+        <RootNavigation />
+      </AppProvider>
     </AuthProvider>
   );
 }
