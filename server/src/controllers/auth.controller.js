@@ -67,7 +67,7 @@ export const verifyStaffOtp = async (req, res) => {
     if (!staff) return res.status(401).json({ success: false, message: 'Invalid OTP or Phone Number' });
 
     staff.device_id = deviceId;
-    staff.assigned_pin = ''; // Clear OTP after use
+    // staff.assigned_pin = ''; // Clear OTP after use
     await staff.save();
 
     const token = generateToken(staff._id, 'Staff', deviceId);

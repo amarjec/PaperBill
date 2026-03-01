@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StatusBar } from 'react-native';
 import { MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // ADDED ROUTER
 import { useLogin } from '../src/hooks/useLogin';
 
 export default function LoginScreen() {
+  const router = useRouter();
   const { handleGoogleLogin, isLoggingIn } = useLogin();
 
   return (
@@ -27,6 +29,7 @@ export default function LoginScreen() {
 
       {/* Action Section */}
       <View>
+        {/* Owner Login */}
         <TouchableOpacity 
           onPress={handleGoogleLogin} 
           disabled={isLoggingIn}
@@ -39,11 +42,31 @@ export default function LoginScreen() {
             <>
               <MaterialCommunityIcons name="google" size={20} color="#e5fc01" />
               <Text className="text-accent font-black text-lg ml-3 uppercase tracking-widest">
-                Continue
+                Owner Login
               </Text>
             </>
           )}
         </TouchableOpacity>
+
+        {/* Visual Separator */}
+        <View className="flex-row items-center my-5 opacity-20">
+          <View className="flex-1 h-[1px] bg-primaryText" />
+          <Text className="mx-4 font-black uppercase tracking-widest text-[10px] text-primaryText">OR</Text>
+          <View className="flex-1 h-[1px] bg-primaryText" />
+        </View>
+
+        {/* Staff Login Portal */}
+        <TouchableOpacity 
+          onPress={() => router.push('/staff-login')}
+          activeOpacity={0.7}
+          className="bg-card/40 py-5 rounded-[22px] flex-row items-center justify-center border border-secondary/10"
+        >
+          <Feather name="users" size={20} color="#1f2617" />
+          <Text className="text-primaryText font-black text-lg ml-3 uppercase tracking-widest">
+            Staff Portal
+          </Text>
+        </TouchableOpacity>
+
         <Text className="text-secondary text-center mt-6 text-[10px] font-bold uppercase tracking-widest opacity-40">
           Secure Login • Paper Bill v2.0
         </Text>

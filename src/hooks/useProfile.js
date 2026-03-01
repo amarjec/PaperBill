@@ -1,12 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Alert, Keyboard } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { userApi } from '../api/userApi';
 import { authApi } from '../api/authApi';
-import { useAuth } from '../context/AuthContext'; // To clear the local token
+import { useAuth } from '../context/AuthContext';
 
 export function useProfile() {
-  const { logout: contextLogout } = useAuth(); // Your local context logout function
+  const { user, logout: contextLogout } = useAuth();
   
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +21,14 @@ export function useProfile() {
   const [pinForm, setPinForm] = useState({ pin: '', confirmPin: '' });
 
   const fetchProfile = async () => {
+    // If the user is Staff, DO NOT hit the Owner profile API. 
+    // Just use the context data.
+    if (user?.role === 'Staff' || user?.permissions) {
+      setProfile(user);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await userApi.getProfile();
@@ -32,7 +40,7 @@ export function useProfile() {
     }
   };
 
-  useFocusEffect(useCallback(() => { fetchProfile(); }, []));
+  useFocusEffect(useCallback(() => { fetchProfile(); }, [user]));
 
   const openEditModal = () => {
     setEditForm({
@@ -89,8 +97,8 @@ export function useProfile() {
         style: "destructive",
         onPress: async () => {
           try {
-            await authApi.logout(); // Tell backend to clear device_id
-            await contextLogout();  // Clear local storage and state (triggers router redirect in _layout.jsx)
+            await authApi.logout(); 
+            await contextLogout();  
           } catch (error) {
             Alert.alert("Error", "Logout failed. Please try again.");
           }
@@ -111,7 +119,7 @@ export function useProfile() {
           onPress: async () => {
             try {
               await userApi.deleteAccount();
-              await contextLogout(); // Log the user out locally
+              await contextLogout(); 
             } catch (error) {
               Alert.alert("Error", "Failed to delete account.");
             }
@@ -122,7 +130,7 @@ export function useProfile() {
   };
 
   return {
-    profile, loading, isProcessing,
+    profile, loading, isProcessing, isStaff: user?.role === 'Staff' || !!user?.permissions,
     editModalVisible, setEditModalVisible, editForm, setEditForm, openEditModal, handleUpdateProfile,
     pinModalVisible, setPinModalVisible, pinForm, setPinForm, handleSetPin,
     handleLogout, handleDeleteAccount
