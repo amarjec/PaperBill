@@ -47,22 +47,82 @@ export const updateCustomer = async (req, res) => {
   }
 };
 
-// Khata Update: When a customer pays off some of their debt
+// // Khata Update: When a customer pays off some of their debt
+// export const updateKhataPayment = async (req, res) => {
+//   try {
+//     const { payment_amount } = req.body;
+    
+//     // Decrement the total_debt by the payment_amount
+//     const customer = await Customer.findOneAndUpdate(
+//       { _id: req.params.id, owner_id: req.user.ownerId },
+//       { $inc: { total_debt: -Math.abs(payment_amount) }, updated_by: req.user.name },
+//       { new: true }
+//     );
+
+//     // Note: In a full production app, you would also create a "PaymentLog" record here 
+//     // to track exactly when and how much was paid.
+
+//     res.status(200).json({ success: true, message: 'Khata updated successfully', customer });
+//   } catch (error) {
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 export const updateKhataPayment = async (req, res) => {
   try {
-    const { payment_amount } = req.body;
-    
-    // Decrement the total_debt by the payment_amount
-    const customer = await Customer.findOneAndUpdate(
-      { _id: req.params.id, owner_id: req.user.ownerId },
-      { $inc: { total_debt: -Math.abs(payment_amount) }, updated_by: req.user.name },
-      { new: true }
-    );
+    const { amount } = req.body;
+    const customerId = req.params.id;
+    const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
 
-    // Note: In a full production app, you would also create a "PaymentLog" record here 
-    // to track exactly when and how much was paid.
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid payment amount' });
+    }
 
-    res.status(200).json({ success: true, message: 'Khata updated successfully', customer });
+    const customer = await Customer.findOne({ _id: customerId, owner_id, is_deleted: false });
+    if (!customer) {
+      return res.status(404).json({ success: false, message: 'Customer not found' });
+    }
+
+    // 1. Log the transaction so the owner can see the details
+    customer.khata_transactions.push({
+      amount: Number(amount),
+      received_by: req.user.name
+    });
+
+    // 2. Reduce the master debt
+    customer.total_debt -= Number(amount);
+    if (customer.total_debt < 0) customer.total_debt = 0; // Prevent negative debt
+    await customer.save();
+
+    // 3. Cascade the payment across unpaid bills (Oldest First)
+    let remainingAmount = Number(amount);
+    const unpaidBills = await Bill.find({
+      customer_id: customerId,
+      owner_id,
+      status: { $in: ['Unpaid', 'Partially Paid'] },
+      is_estimate: false,
+      is_deleted: false
+    }).sort({ createdAt: 1 }); // 1 = Oldest first
+
+    for (let bill of unpaidBills) {
+      if (remainingAmount <= 0) break;
+
+      const pendingOnBill = bill.total_amount - (bill.amount_paid || 0);
+
+      if (remainingAmount >= pendingOnBill) {
+        // Pay this bill off completely
+        bill.amount_paid = bill.total_amount;
+        bill.status = 'Paid';
+        remainingAmount -= pendingOnBill;
+      } else {
+        // Partially pay this bill
+        bill.amount_paid += remainingAmount;
+        bill.status = 'Partially Paid';
+        remainingAmount = 0;
+      }
+      await bill.save();
+    }
+
+    res.status(200).json({ success: true, message: 'Payment successfully recorded and cascaded.' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -84,44 +144,84 @@ export const softDeleteCustomer = async (req, res) => {
   }
 };
 
-// Get Khata details for a specific customer
+// // Get Khata details for a specific customer
+// export const getKhataByCustomerId = async (req, res) => {
+//   try {
+//     const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
+//     const customerId = req.params.id;
+
+//     // 1. Get the customer details (including their total_debt)
+//     const customer = await Customer.findOne({ _id: customerId, owner_id, is_deleted: false });
+    
+//     if (!customer) {
+//       return res.status(404).json({ success: false, message: 'Customer not found' });
+//     }
+
+//     // 2. Get all unpaid or partially paid bills for this specific customer
+//     const unpaidBills = await Bill.find({
+//       customer_id: customerId,
+//       owner_id,
+//       is_deleted: false,
+//       is_estimate: false,
+//       status: { $in: ['Unpaid', 'Partially Paid'] }
+//     }).sort({ createdAt: 1 }); // Oldest debts first
+
+//     // 3. Get recent payment history (fully paid bills) to show on the ledger
+//     const paymentHistory = await Bill.find({
+//       customer_id: customerId,
+//       owner_id,
+//       is_deleted: false,
+//       is_estimate: false,
+//       status: 'Paid'
+//     }).sort({ updatedAt: -1 }).limit(5); // Last 5 paid transactions
+
+//     res.status(200).json({ 
+//       success: true, 
+//       customer,
+//       khata: {
+//         total_due: customer.total_debt,
+//         unpaid_bills: unpaidBills,
+//         recent_payments: paymentHistory
+//       }
+//     });
+//   } catch (error) {
+//     res.status(500).json({ success: false, error: error.message });
+//   }
+// };
 export const getKhataByCustomerId = async (req, res) => {
   try {
     const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
     const customerId = req.params.id;
 
-    // 1. Get the customer details (including their total_debt)
     const customer = await Customer.findOne({ _id: customerId, owner_id, is_deleted: false });
     
     if (!customer) {
       return res.status(404).json({ success: false, message: 'Customer not found' });
     }
 
-    // 2. Get all unpaid or partially paid bills for this specific customer
+    // Unpaid bills (Used for cascading payments and the WhatsApp reminder logic)
     const unpaidBills = await Bill.find({
       customer_id: customerId,
       owner_id,
       is_deleted: false,
       is_estimate: false,
       status: { $in: ['Unpaid', 'Partially Paid'] }
-    }).sort({ createdAt: 1 }); // Oldest debts first
+    }).sort({ createdAt: 1 }); // Oldest first
 
-    // 3. Get recent payment history (fully paid bills) to show on the ledger
-    const paymentHistory = await Bill.find({
+    // ALL Bills (Used to show the complete customer history)
+    const allBills = await Bill.find({
       customer_id: customerId,
       owner_id,
       is_deleted: false,
-      is_estimate: false,
-      status: 'Paid'
-    }).sort({ updatedAt: -1 }).limit(5); // Last 5 paid transactions
+      is_estimate: false
+    }).sort({ createdAt: -1 }); // Newest first
 
     res.status(200).json({ 
       success: true, 
       customer,
       khata: {
-        total_due: customer.total_debt,
-        unpaid_bills: unpaidBills,
-        recent_payments: paymentHistory
+        unpaidBills,
+        allBills
       }
     });
   } catch (error) {

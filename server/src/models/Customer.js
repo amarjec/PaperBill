@@ -7,10 +7,17 @@ const customerSchema = new mongoose.Schema({
   address: { type: String },
   
   // Khata (Credit Ledger)
-  total_debt: { type: Number, default: 0 }, // Positive means they owe money
+  total_debt: { type: Number, default: 0 }, 
+  
+  // NEW: Log of individual payments received
+  khata_transactions: [{
+    amount: { type: Number, required: true },
+    date: { type: Date, default: Date.now },
+    received_by: { type: String } // To track which staff member collected the cash
+  }],
   
   // Audit Trail
-  created_by: { type: String, required: true }, // e.g., "Staff: Rahul" or "Owner: Amar"
+  created_by: { type: String, required: true }, 
   updated_by: { type: String },
   is_deleted: { type: Boolean, default: false },
   deleted_by: { type: String },
