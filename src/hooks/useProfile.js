@@ -1,0 +1,130 @@
+import { useState, useCallback } from 'react';
+import { Alert, Keyboard } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { userApi } from '../api/userApi';
+import { authApi } from '../api/authApi';
+import { useAuth } from '../context/AuthContext'; // To clear the local token
+
+export function useProfile() {
+  const { logout: contextLogout } = useAuth(); // Your local context logout function
+  
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Edit Profile Modal State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editForm, setEditForm] = useState({ business_name: '', phone_number: '', address: '' });
+
+  // PIN Modal State
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinForm, setPinForm] = useState({ pin: '', confirmPin: '' });
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const res = await userApi.getProfile();
+      if (res.success) setProfile(res.user);
+    } catch (error) {
+      console.log("Failed to load profile", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(useCallback(() => { fetchProfile(); }, []));
+
+  const openEditModal = () => {
+    setEditForm({
+      business_name: profile?.business_name || '',
+      phone_number: profile?.phone_number || '',
+      address: profile?.address || ''
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!editForm.business_name.trim()) return Alert.alert("Error", "Business name is required.");
+    
+    setIsProcessing(true);
+    try {
+      const res = await userApi.updateProfile(editForm);
+      if (res.success) {
+        setProfile(res.user);
+        setEditModalVisible(false);
+        Alert.alert("Success", "Profile updated successfully!");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to update profile.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSetPin = async () => {
+    if (pinForm.pin.length !== 4) return Alert.alert("Error", "PIN must be exactly 4 digits.");
+    if (pinForm.pin !== pinForm.confirmPin) return Alert.alert("Error", "PINs do not match.");
+
+    Keyboard.dismiss();
+    setIsProcessing(true);
+    try {
+      const res = await userApi.setPin(pinForm.pin);
+      if (res.success) {
+        setPinModalVisible(false);
+        setPinForm({ pin: '', confirmPin: '' });
+        Alert.alert("Secured", "Your Owner PIN has been successfully set.");
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to set PIN.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure you want to log out?", [
+      { text: "Cancel", style: "cancel" },
+      { 
+        text: "Logout", 
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await authApi.logout(); // Tell backend to clear device_id
+            await contextLogout();  // Clear local storage and state (triggers router redirect in _layout.jsx)
+          } catch (error) {
+            Alert.alert("Error", "Logout failed. Please try again.");
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account", 
+      "Are you absolutely sure? This will delete your shop and log you out immediately.", 
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete Forever", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await userApi.deleteAccount();
+              await contextLogout(); // Log the user out locally
+            } catch (error) {
+              Alert.alert("Error", "Failed to delete account.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  return {
+    profile, loading, isProcessing,
+    editModalVisible, setEditModalVisible, editForm, setEditForm, openEditModal, handleUpdateProfile,
+    pinModalVisible, setPinModalVisible, pinForm, setPinForm, handleSetPin,
+    handleLogout, handleDeleteAccount
+  };
+}
