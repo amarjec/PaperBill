@@ -104,3 +104,97 @@ export const getPreInventoryTemplates = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+
+import User from '../models/User.js'; // <--- THIS WAS THE MISSING LINE!
+
+export const importInventoryTemplate = async (req, res) => {
+    try {
+        const { templateData } = req.body;
+        
+        // Ensure user is attached by protect middleware
+        if (!req.user || !req.user.ownerId) {
+            return res.status(401).json({ success: false, message: "Authentication failed" });
+        }
+
+        const owner_id = req.user.ownerId; 
+        const creator_name = req.user.name || "System Import"; 
+
+        if (!templateData || !Array.isArray(templateData)) {
+            return res.status(400).json({ success: false, message: "Invalid template format" });
+        }
+
+        console.log(`🚀 Starting Bulk Import for Shop: ${owner_id}`);
+
+        // Loop through each category in the selected template
+        for (const cat of templateData) {
+            // Find or Create Category
+            let existingCategory = await Category.findOne({ name: cat.category, owner_id, is_deleted: false });
+            
+            if (!existingCategory) {
+                existingCategory = await Category.create({ 
+                    name: cat.category, 
+                    owner_id, 
+                    created_by: creator_name 
+                });
+            }
+
+            for (const sub of cat.subCategories) {
+                // Find or Create SubCategory
+                let existingSub = await Subcategory.findOne({ 
+                    name: sub.name, 
+                    category_id: existingCategory._id, 
+                    owner_id,
+                    is_deleted: false 
+                });
+                
+                if (!existingSub) {
+                    existingSub = await Subcategory.create({
+                        name: sub.name,
+                        category_id: existingCategory._id,
+                        owner_id,
+                        created_by: creator_name
+                    });
+                }
+
+                // Map items to match your Product schema
+                const productsToInsert = sub.products.map(prod => ({
+                    owner_id: owner_id, //
+                    subcategory_id: existingSub._id, //
+                    item_name: prod.label, //
+                    unit: prod.unit || 'pcs', //
+                    purchase_price: Number(prod.costPrice) || 0, //
+                    retail_price: Number(prod.sellingPrice) || 0, //
+                    wholesale_price: Number(prod.wholesalePrice) || 0, //
+                    default_brand_name: 'Generic', 
+                    created_by: creator_name, //
+                    alternate_brands: [],
+                    is_deleted: false
+                }));
+
+                if (productsToInsert.length > 0) {
+                    try {
+                        // Bulk insert, skipping duplicates
+                        await Product.insertMany(productsToInsert, { ordered: false });
+                    } catch (bulkErr) {
+                        console.log(`Note: Some items in ${sub.name} already exist.`);
+                    }
+                }
+            }
+        }
+
+        // --- PERSISTENCE FIX ---
+        // Save the flag to the database so the setup screen never comes back
+        // await User.findByIdAndUpdate(owner_id, { has_inventory: true });
+
+        res.status(200).json({ success: true, message: "Inventory successfully pre-filled!" });
+
+    } catch (error) {
+        console.error("❌ BULK IMPORT CRASHED:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Internal Server Error during import", 
+            error: error.message 
+        });
+    }
+};

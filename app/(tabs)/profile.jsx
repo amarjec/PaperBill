@@ -127,6 +127,26 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
+            {/* Inventory Management Entry Point */}
+            <View className="mb-6">
+              <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Inventory</Text>
+              <Pressable 
+                onPress={() => router.push('/setup-inventory')} 
+                className="bg-card/40 p-5 rounded-3xl flex-row justify-between items-center border border-secondary/10 active:opacity-70"
+              >
+                <View className="flex-row items-center">
+                  <View className="bg-white p-2 rounded-full mr-3 border border-card">
+                    <Feather name="box" size={16} color="#1f2617" />
+                  </View>
+                  <View>
+                    <Text className="text-primaryText font-black text-sm uppercase tracking-widest">Bulk Add Products</Text>
+                    <Text className="text-secondaryText font-bold text-[10px] mt-0.5">Auto invetory management</Text>
+                  </View>
+                </View>
+                <Feather name="chevron-right" size={20} color="#1f2617" />
+              </Pressable>
+            </View>
+
             {/* Security Card */}
             <View className="mb-6">
               <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Security</Text>
