@@ -1,12 +1,14 @@
-// routes/analytics.route.js
 import express from 'express';
-import { getProfitReport } from '../controllers/analytics.controller.js';
+import { getDashboardAnalytics } from '../controllers/analytics.controller.js';
 import { protect } from '../middlewares/auth.middleware.js';
-import { ownerOnly } from '../middlewares/rbac.middleware.js';
+import { ownerOnly, premiumOnly } from '../middlewares/rbac.middleware.js';
 
 const router = express.Router();
 
-// Profit reports are strictly for the Owner
-router.get('/profit', protect, ownerOnly, getProfitReport);
+// 1. Lock down the entire file
+router.use(protect, ownerOnly, premiumOnly);
+
+// 2. The Main Dashboard Endpoint
+router.get('/dashboard', getDashboardAnalytics);
 
 export default router;
