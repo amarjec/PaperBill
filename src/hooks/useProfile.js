@@ -6,7 +6,7 @@ import { authApi } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 
 export function useProfile() {
-  const { user, logout: contextLogout } = useAuth();
+  const { user, setUser, updateUser, logout: contextLogout } = useAuth();
   
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -32,13 +32,40 @@ export function useProfile() {
     try {
       setLoading(true);
       const res = await userApi.getProfile();
-      if (res.success) setProfile(res.user);
+      
+      if (res.success) {
+        setProfile(res.user);
+        
+        // --- LOOP PREVENTION FIX ---
+        // Only update the global context if crucial fields are out of sync.
+        // This stops the infinite re-rendering cycle.
+        const needsUpdate = 
+          user?.isPremium !== res.user.isPremium || 
+          user?.has_inventory !== res.user.has_inventory;
+
+        if (needsUpdate) {
+          if (updateUser) {
+             updateUser(res.user); 
+          } else {
+             setUser(res.user);    
+          }
+        }
+      }
     } catch (error) {
       console.log("Failed to load profile", error);
     } finally {
       setLoading(false);
     }
   };
+
+  // --- DEPENDENCY FIX ---
+  // Leave the dependency array empty so it only fires when the screen comes into focus,
+  // NOT every time the user object changes in the background.
+  useFocusEffect(
+    useCallback(() => { 
+      fetchProfile(); 
+    }, []) 
+  );
 
   useFocusEffect(useCallback(() => { fetchProfile(); }, [user]));
 

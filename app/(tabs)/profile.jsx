@@ -73,10 +73,12 @@ export default function ProfileScreen() {
             {isStaff ? `Employee ID: ${profile.phone_number}` : profile.email}
           </Text>
           {isStaff && (
-            <View className="bg-[#4ade80]/10 px-3 py-1 rounded-md mt-3 border border-[#4ade80]/20">
-              <Text className="text-[#4ade80] text-[10px] font-black uppercase tracking-widest">Active Staff</Text>
-            </View>
-          )}
+  <View className={`px-3 py-1 rounded-md mt-3 border ${profile.status === 'Suspended' ? 'bg-red-500/10 border-red-500/20' : 'bg-[#4ade80]/10 border-[#4ade80]/20'}`}>
+    <Text className={`text-[10px] font-black uppercase tracking-widest ${profile.status === 'Suspended' ? 'text-red-500' : 'text-[#4ade80]'}`}>
+      {profile.status === 'Suspended' ? 'Suspended Account' : 'Staff Member'}
+    </Text>
+  </View>
+)}
         </View>
 
         {/* --- OWNER ONLY SECTIONS --- */}

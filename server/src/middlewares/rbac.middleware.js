@@ -31,3 +31,15 @@ export const ownerOnly = (req, res, next) => {
   }
   next();
 };
+
+export const premiumOnly = (req, res, next) => {
+  // We check the isPremium flag that was attached by auth.middleware.js
+  if (!req.user || req.user.isPremium !== true) {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'LOCKED: This API requires an active Premium subscription.',
+      code: 'PREMIUM_REQUIRED'
+    });
+  }
+  next();
+};

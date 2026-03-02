@@ -65,6 +65,12 @@ export const verifyStaffOtp = async (req, res) => {
     const staff = await Staff.findOne({ phone_number: phoneNumber, assigned_pin: otp });
 
     if (!staff) return res.status(401).json({ success: false, message: 'Invalid OTP or Phone Number' });
+     if (staff.status === 'Suspended') {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Your account has been suspended. Please contact the shop owner.' 
+      });
+    }
 
     staff.device_id = deviceId;
     // staff.assigned_pin = ''; // Clear OTP after use
