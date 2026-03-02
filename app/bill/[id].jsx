@@ -4,10 +4,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBillDetail } from '@/src/hooks/useBillDetail';
+import { useAuth } from '../../src/context/AuthContext';
+import { billService } from '../../src/services/billService';
 
 export default function BillDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { user } = useAuth(); // Get shop details from context
+
+const handleShare = async () => {
+  try {
+    // Check if bill exists before sharing
+    if (!bill) return Alert.alert("Error", "Bill data not loaded yet.");
+    
+    await billService.generateAndShare(bill, user);
+  } catch (err) {
+    // Log the real error to your console so you can see if it's a native module issue
+    console.error("PDF Error:", err);
+    Alert.alert("Error", "Failed to generate PDF. Check console for details.");
+  }
+};
   
   const {
     bill, loading, isProcessing, safeNum, profitTotals,
@@ -229,6 +245,16 @@ export default function BillDetailScreen() {
             </Pressable>
           )}
         </View>
+        <View>
+            <Pressable 
+  onPress={handleShare}
+  className="bg-primaryText flex-row items-center justify-center p-5 rounded-3xl mt-6 active:opacity-70"
+>
+  <Feather name="share-2" size={18} color="#e5fc01" />
+  <Text className="text-accent font-black uppercase tracking-widest ml-3">Share on WhatsApp</Text>
+</Pressable>
+        </View>
+        
       </ScrollView>
 
       {/* Sticky Bottom Actions */}
