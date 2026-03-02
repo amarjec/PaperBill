@@ -37,7 +37,6 @@ export default function ProfileScreen() {
             const hasUpdate = profile.permissions[mod].update;
             const hasDelete = profile.permissions[mod].delete;
             
-            // Determine level of access to show a quick summary
             let level = "No Access";
             let color = "text-red-500";
             if (hasRead && !hasCreate && !hasUpdate && !hasDelete) { level = "View Only"; color = "text-orange-400"; }
@@ -45,7 +44,7 @@ export default function ProfileScreen() {
             else if (hasRead && hasCreate && hasUpdate && hasDelete) { level = "Full Access"; color = "text-[#4ade80]"; }
 
             return (
-              <View key={mod} className="w-[48%] mb-4 bg-bg p-3 rounded-2xl border border-card">
+              <View key={mod} className="w-[48%] mb-4 bg-bg p-3 rounded-2xl border border-card items-center justify-center py-4">
                 <Text className="text-primaryText font-black text-xs uppercase tracking-widest">{mod}</Text>
                 <Text className={`font-bold text-[10px] uppercase mt-1 ${color}`}>{level}</Text>
               </View>
@@ -83,6 +82,34 @@ export default function ProfileScreen() {
         {/* --- OWNER ONLY SECTIONS --- */}
         {!isStaff && (
           <>
+            {/* Subscription & Upgrade Card - MOVED TO TOP FOR VISIBILITY */}
+            <View className="mb-8">
+              <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Plan Details</Text>
+              <Pressable 
+                onPress={() => !profile.isPremium && router.push('/subscription')}
+                className={`p-6 rounded-[32px] border flex-row justify-between items-center shadow-sm ${profile.isPremium ? 'bg-primaryText border-primaryText' : 'bg-white border-card active:opacity-70'}`}
+              >
+                <View className="flex-row items-center flex-1">
+                  <View className={`p-3 rounded-2xl mr-4 ${profile.isPremium ? 'bg-accent/20' : 'bg-card'}`}>
+                    <MaterialCommunityIcons name={profile.isPremium ? "crown" : "star-outline"} size={24} color={profile.isPremium ? "#eab308" : "#1f2617"} />
+                  </View>
+                  <View className="flex-1 pr-2">
+                    <Text className={`font-black text-base uppercase tracking-widest ${profile.isPremium ? 'text-accent' : 'text-primaryText'}`}>
+                      {profile.isPremium ? 'Premium Active' : 'Free Plan'}
+                    </Text>
+                    <Text className={`font-medium text-[10px] mt-1 ${profile.isPremium ? 'text-secondary opacity-80' : 'text-secondaryText'}`}>
+                      {profile.isPremium ? 'All features unlocked' : 'Tap to unlock analytics & staff'}
+                    </Text>
+                  </View>
+                </View>
+                {!profile.isPremium && (
+                  <View className="bg-accent px-3 py-2 rounded-xl">
+                    <Text className="text-primaryText font-black text-[10px] uppercase tracking-widest">Upgrade</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
             {/* Business Details Card */}
             <View className="mb-6">
               <View className="flex-row justify-between items-end mb-3 ml-2">
@@ -107,43 +134,40 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Staff Management Entry Point */}
+            {/* Quick Actions Grid */}
             <View className="mb-6">
-              <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Team</Text>
+              <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Management</Text>
+              
               <Pressable 
                 onPress={() => router.push('/staff')} 
-                className="bg-card/40 p-5 rounded-3xl flex-row justify-between items-center border border-secondary/10 active:opacity-70"
+                className="bg-white p-5 rounded-3xl flex-row justify-between items-center border border-card shadow-sm mb-3 active:opacity-70"
               >
                 <View className="flex-row items-center">
-                  <View className="bg-white p-2 rounded-full mr-3 border border-card">
-                    <Feather name="users" size={16} color="#1f2617" />
+                  <View className="bg-blue-500/10 p-3 rounded-2xl mr-4">
+                    <Feather name="users" size={18} color="#3b82f6" />
                   </View>
                   <View>
                     <Text className="text-primaryText font-black text-sm uppercase tracking-widest">Manage Staff</Text>
                     <Text className="text-secondaryText font-bold text-[10px] mt-0.5">Control access and permissions</Text>
                   </View>
                 </View>
-                <Feather name="chevron-right" size={20} color="#1f2617" />
+                <Feather name="chevron-right" size={20} color="#bfb5a8" />
               </Pressable>
-            </View>
 
-            {/* Inventory Management Entry Point */}
-            <View className="mb-6">
-              <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Inventory</Text>
               <Pressable 
                 onPress={() => router.push('/setup-inventory')} 
-                className="bg-card/40 p-5 rounded-3xl flex-row justify-between items-center border border-secondary/10 active:opacity-70"
+                className="bg-white p-5 rounded-3xl flex-row justify-between items-center border border-card shadow-sm active:opacity-70"
               >
                 <View className="flex-row items-center">
-                  <View className="bg-white p-2 rounded-full mr-3 border border-card">
-                    <Feather name="box" size={16} color="#1f2617" />
+                  <View className="bg-orange-500/10 p-3 rounded-2xl mr-4">
+                    <Feather name="package" size={18} color="#f97316" />
                   </View>
                   <View>
                     <Text className="text-primaryText font-black text-sm uppercase tracking-widest">Bulk Add Products</Text>
-                    <Text className="text-secondaryText font-bold text-[10px] mt-0.5">Auto invetory management</Text>
+                    <Text className="text-secondaryText font-bold text-[10px] mt-0.5">Auto inventory setup</Text>
                   </View>
                 </View>
-                <Feather name="chevron-right" size={20} color="#1f2617" />
+                <Feather name="chevron-right" size={20} color="#bfb5a8" />
               </Pressable>
             </View>
 
@@ -152,35 +176,19 @@ export default function ProfileScreen() {
               <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Security</Text>
               <Pressable 
                 onPress={() => setPinModalVisible(true)}
-                className="bg-primaryText p-5 rounded-3xl flex-row justify-between items-center active:opacity-70 shadow-lg"
+                className="bg-white p-5 rounded-3xl flex-row justify-between items-center border border-card shadow-sm active:opacity-70"
               >
                 <View className="flex-row items-center">
-                  <View className="bg-white/10 p-2 rounded-full mr-3">
-                    <Feather name="lock" size={16} color="#e5fc01" />
+                  <View className="bg-primaryText/5 p-3 rounded-2xl mr-4">
+                    <Feather name="lock" size={18} color="#1f2617" />
                   </View>
                   <View>
-                    <Text className="text-accent font-black text-sm uppercase tracking-widest">Owner PIN</Text>
-                    <Text className="text-secondary font-bold text-[10px] mt-0.5 opacity-80">Used to view profits & unlock app</Text>
+                    <Text className="text-primaryText font-black text-sm uppercase tracking-widest">Owner PIN</Text>
+                    <Text className="text-secondaryText font-bold text-[10px] mt-0.5">Used to view profits & unlock app</Text>
                   </View>
                 </View>
-                <Feather name="chevron-right" size={20} color="#e5fc01" />
+                <Feather name="chevron-right" size={20} color="#bfb5a8" />
               </Pressable>
-            </View>
-
-            {/* Subscription Info */}
-            <View className="mb-8">
-              <Text className="text-secondaryText text-[10px] font-bold uppercase tracking-widest mb-3 ml-2">Plan Details</Text>
-              <View className="bg-card/30 p-5 rounded-3xl border border-secondary/10 flex-row justify-between items-center">
-                <View className="flex-row items-center">
-                  <MaterialCommunityIcons name={profile.isPremium ? "crown" : "star-outline"} size={24} color={profile.isPremium ? "#eab308" : "#bfb5a8"} />
-                  <View className="ml-3">
-                    <Text className="text-primaryText font-black text-sm uppercase tracking-widest">{profile.subscription?.plan_name || 'Free Plan'}</Text>
-                    <Text className="text-secondaryText font-bold text-[10px] mt-0.5">
-                      {profile.isPremium ? 'Active Subscription' : 'Upgrade to unlock more features'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
             </View>
           </>
         )}
@@ -189,24 +197,23 @@ export default function ProfileScreen() {
         {isStaff && renderPermissions()}
 
         {/* --- COMMON SECTIONS (Logout/Delete) --- */}
-        <View className="mb-10 border-t border-card/50 pt-6">
-          <Pressable onPress={handleLogout} className="bg-card p-5 rounded-3xl flex-row items-center justify-center mb-4 active:opacity-50">
+        <View className="mb-10 border-t border-card/50 pt-8 mt-2">
+          <Pressable onPress={handleLogout} className="bg-card/40 border border-secondary/10 py-5 rounded-2xl flex-row items-center justify-center mb-4 active:opacity-50">
             <Feather name="log-out" size={18} color="#1f2617" />
             <Text className="text-primaryText font-black uppercase tracking-widest ml-3">Log Out</Text>
           </Pressable>
           
-          {/* Only Owners can delete the whole shop */}
           {!isStaff && (
-            <Pressable onPress={handleDeleteAccount} className="bg-red-500/10 border border-red-500/20 p-5 rounded-3xl flex-row items-center justify-center active:opacity-50">
-              <Feather name="trash-2" size={18} color="#ef4444" />
-              <Text className="text-red-500 font-black uppercase tracking-widest ml-3">Delete Account</Text>
+            <Pressable onPress={handleDeleteAccount} className="py-4 flex-row items-center justify-center active:opacity-50">
+              <Feather name="trash-2" size={14} color="#ef4444" />
+              <Text className="text-red-500 font-bold uppercase tracking-widest text-[10px] ml-2">Delete Account Forever</Text>
             </Pressable>
           )}
         </View>
 
       </ScrollView>
 
-      {/* Modals remain structurally the same, but only render for owners to prevent weird state bugs */}
+      {/* --- MODALS --- */}
       {!isStaff && (
         <>
           <Modal visible={editModalVisible} transparent animationType="slide">

@@ -13,17 +13,21 @@ const userSchema = new mongoose.Schema({
     enum: ['Hardware', 'Grocery', 'Electronics', 'Traders', 'General Store', 'Medical'] 
   }],
   
+  // NEW: Tracks if the user completed the inventory setup
+  has_inventory: { type: Boolean, default: false },
+  
   // Security & Identity
   secure_pin: { type: String }, // Hashed 4-digit PIN for Profit View
   device_id: { type: String },  // For Single-Device Login Policy
   
-  // Razorpay Subscription Logic
-  isPremium: { type: Boolean, default: false }, // Simple check for gated features
+  // UPDATED: Razorpay One-Time Payment Logic
+  isPremium: { type: Boolean, default: false }, 
   subscription: {
-    plan_name: { type: String, enum: ['Free', 'Gold', 'Diamond'], default: 'Free' },
-    razorpay_subscription_id: { type: String },
-    status: { type: String, enum: ['active', 'inactive', 'past_due', 'cancelled'], default: 'inactive' },
-    expires_at: { type: Date }
+    plan_name: { type: String, enum: ['Free', 'monthly', 'yearly'], default: 'Free' },
+    status: { type: String, enum: ['active', 'inactive', 'expired'], default: 'inactive' },
+    start_date: { type: Date },
+    end_date: { type: Date }, // We check this to see if premium expired
+    last_order_id: { type: String } // Prevents double-verification of the same payment
   }
 }, { timestamps: true });
 
