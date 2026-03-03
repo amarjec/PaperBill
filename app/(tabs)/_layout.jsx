@@ -1,12 +1,13 @@
 import { Tabs } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { View } from 'react-native';
+import GlobalHeader from '../../src/components/GlobalHeader';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        header: () => <GlobalHeader />,
         tabBarStyle: {
           backgroundColor: '#1f2617', // primaryText from your theme
           borderTopWidth: 0,
