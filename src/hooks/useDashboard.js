@@ -4,22 +4,39 @@ import { analyticsApi } from '../api/analyticsApi';
 
 export function useDashboard() {
   const [stats, setStats] = useState({
-    totalRevenue: 0,
-    grossProfit: 0,
-    totalPendingKhata: 0,
-    totalBillsGenerated: 0
+    totalSales: 0,
+    totalProfit: 0,
+    totalUdhaar: 0,
+    totalBills: 0
   });
   const [loading, setLoading] = useState(true);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const res = await analyticsApi.getProfitReport();
+
+      // Get today's date range for the summary card
+      const now = new Date();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1) // 1st of current month
+        .toISOString();
+      const endDate = new Date(now.setHours(23, 59, 59, 999))
+        .toISOString();
+
+      const res = await analyticsApi.getDashboard(startDate, endDate);
+
       if (res.success) {
-        setStats(res.data);
+        // Map the actual backend response shape to our state
+        setStats({
+          totalSales: res.summary?.totalSales || 0,
+          totalProfit: res.summary?.totalProfit || 0,
+          totalUdhaar: res.summary?.totalUdhaar || 0,
+          totalBills: res.summary?.totalBills || 0,
+        });
       }
     } catch (error) {
-      console.error("Dashboard stats error:", error);
+      // Analytics is premium-only — a 403 here is expected for free users
+      // We silently fail so the dashboard still loads for free users
+      console.log("Dashboard stats error (may be non-premium user):", error?.response?.status);
     } finally {
       setLoading(false);
     }
