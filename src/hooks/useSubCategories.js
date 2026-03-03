@@ -12,10 +12,22 @@ export function useSubCategories(categoryId, searchTerm = '') {
       setLoading(true);
       const data = await subCategoryApi.getAll();
       if (data.success) {
-        // Fallback checks for property names based on your backend response
         const allSubs = data.subcategories || data.subs || [];
-        // Only keep subcategories that belong to the current category ID
-        const filtered = allSubs.filter(s => s.category_id === categoryId);
+
+        // FIX: Safely extract the ID from category_id regardless of its shape.
+        // It can be:
+        //   - a plain string: "abc123"
+        //   - a MongoDB ObjectId (has .toString()): ObjectId("abc123")
+        //   - a populated object (has ._id): { _id: "abc123", name: "Hardware" }
+        const filtered = allSubs.filter(s => {
+          const subCatId =
+            typeof s.category_id === 'object' && s.category_id !== null
+              ? String(s.category_id._id ?? s.category_id) // handle populated or ObjectId
+              : String(s.category_id);                      // handle plain string
+
+          return subCatId === String(categoryId);
+        });
+
         setSubCategories(filtered);
       }
     } catch (error) {
@@ -29,10 +41,11 @@ export function useSubCategories(categoryId, searchTerm = '') {
     if (categoryId) fetchSubCategories();
   }, [categoryId]);
 
-  // Real-time Search Filtering
   const filteredData = useMemo(() => {
     if (!searchTerm) return subCategories;
-    return subCategories.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return subCategories.filter(s =>
+      s.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   }, [subCategories, searchTerm]);
 
   const handleSave = async (name, editingId = null) => {
@@ -65,5 +78,12 @@ export function useSubCategories(categoryId, searchTerm = '') {
     }
   };
 
-  return { subCategories: filteredData, loading, isSubmitting, handleSave, handleDelete, refresh: fetchSubCategories };
+  return {
+    subCategories: filteredData,
+    loading,
+    isSubmitting,
+    handleSave,
+    handleDelete,
+    refresh: fetchSubCategories
+  };
 }
