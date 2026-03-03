@@ -89,36 +89,73 @@ export const getBillById = async (req, res) => {
 export const updateBill = async (req, res) => {
   try {
     const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
-    
-    // 1. Find the original bill to calculate Khata differences
-    const originalBill = await Bill.findOne({ _id: req.params.id, owner_id, is_deleted: false });
-    if (!originalBill) return res.status(404).json({ success: false, message: 'Bill not found' });
 
-    // 2. Calculate old debt vs new debt
-    const oldDebt = originalBill.total_amount - originalBill.amount_paid;
-    
-    // Assume req.body might contain new totals, otherwise fallback to old ones
-    const newTotalAmount = req.body.total_amount !== undefined ? req.body.total_amount : originalBill.total_amount;
-    const newAmountPaid = req.body.amount_paid !== undefined ? req.body.amount_paid : originalBill.amount_paid;
-    const newDebt = newTotalAmount - newAmountPaid;
-    
-    const debtDifference = newDebt - oldDebt; // How much the debt changed
+    // 1. Fetch original bill first — we need it for Khata diff calculation
+    const originalBill = await Bill.findOne({
+      _id: req.params.id,
+      owner_id,
+      is_deleted: false
+    });
+    if (!originalBill) {
+      return res.status(404).json({ success: false, message: 'Bill not found' });
+    }
 
-    // 3. Update the bill
+    // 2. WHITELIST — only allow these specific fields to be updated
+    // Never trust total_amount from the client — always recalculate it
+    const { items, extra_fare, discount, amount_paid } = req.body;
+
+    // 3. Build the update object carefully
+    const updateData = { updated_by: req.user.name };
+
+    // Only update items if provided
+    const newItems = items || originalBill.items;
+    const newExtraFare = extra_fare !== undefined ? Number(extra_fare) : originalBill.extra_fare;
+    const newDiscount = discount !== undefined ? Number(discount) : originalBill.discount;
+
+    // 4. Always recalculate total_amount server-side from actual items
+    // Never trust the client-sent total
+    let itemsTotal = 0;
+    newItems.forEach(item => {
+      itemsTotal += (Number(item.sale_price) * Number(item.quantity));
+    });
+    const newTotalAmount = itemsTotal + newExtraFare - newDiscount;
+
+    // 5. Determine new amount_paid safely
+    const newAmountPaid = amount_paid !== undefined
+      ? Math.min(Number(amount_paid), newTotalAmount) // can't pay more than total
+      : originalBill.amount_paid;
+
+    // 6. Recalculate status
+    let newStatus = 'Unpaid';
+    if (newAmountPaid >= newTotalAmount) newStatus = 'Paid';
+    else if (newAmountPaid > 0) newStatus = 'Partially Paid';
+
+    // 7. Apply whitelisted fields only
+    updateData.items = newItems;
+    updateData.extra_fare = newExtraFare;
+    updateData.discount = newDiscount;
+    updateData.total_amount = newTotalAmount; // server-calculated, not client
+    updateData.amount_paid = newAmountPaid;
+    updateData.status = newStatus;
+
+    // 8. Perform the update
     const updatedBill = await Bill.findOneAndUpdate(
       { _id: req.params.id, owner_id },
-      { 
-        ...req.body, 
-        updated_by: req.user.name 
-      },
+      updateData,
       { new: true }
     );
 
-    // 4. Apply the Debt Difference to the Customer's Khata (if it's not an estimate)
-    if (!updatedBill.is_estimate && originalBill.customer_id && debtDifference !== 0) {
-      await Customer.findByIdAndUpdate(originalBill.customer_id, {
-        $inc: { total_debt: debtDifference }
-      });
+    // 9. Sync Khata — calculate debt difference and apply it
+    if (!updatedBill.is_estimate && originalBill.customer_id) {
+      const oldDebt = originalBill.total_amount - (originalBill.amount_paid || 0);
+      const newDebt = newTotalAmount - newAmountPaid;
+      const debtDifference = newDebt - oldDebt;
+
+      if (debtDifference !== 0) {
+        await Customer.findByIdAndUpdate(originalBill.customer_id, {
+          $inc: { total_debt: debtDifference }
+        });
+      }
     }
 
     res.status(200).json({ success: true, bill: updatedBill });
