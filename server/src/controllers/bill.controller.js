@@ -130,20 +130,38 @@ export const updateBill = async (req, res) => {
 export const softDeleteBill = async (req, res) => {
   try {
     const { id } = req.params;
+    const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
     const deleted_by = req.user.name;
 
-    const bill = await Bill.findByIdAndUpdate(id, {
+    // FIX A: Fetch the bill FIRST so we can safely read its fields
+    // and check if it actually exists before doing anything
+    const bill = await Bill.findOne({ _id: id, owner_id, is_deleted: false });
+
+    if (!bill) {
+      return res.status(404).json({ success: false, message: 'Bill not found' });
+    }
+
+    // Now safely perform the soft delete
+    await Bill.findByIdAndUpdate(id, {
       is_deleted: true,
       deleted_by,
       deleted_at: new Date()
     });
 
-    // Optional: Reverse Khata debt if a bill is deleted
-    if (!bill.is_estimate && bill.status !== 'Paid' && bill.customer_id) {
-      const debtAmount = bill.total_amount - bill.amount_paid;
-      await Customer.findByIdAndUpdate(bill.customer_id, {
-        $inc: { total_debt: -debtAmount }
-      });
+    // FIX B & C: Reverse Khata debt with safe fallback for amount_paid
+    // Only reverse if:
+    // - It's a real bill (not an estimate)
+    // - It has a customer linked
+    // - There is actually an unpaid portion to reverse
+    if (!bill.is_estimate && bill.customer_id) {
+      const amountPaid = bill.amount_paid || 0; // FIX C: safe fallback
+      const debtToReverse = bill.total_amount - amountPaid;
+
+      if (debtToReverse > 0) {
+        await Customer.findByIdAndUpdate(bill.customer_id, {
+          $inc: { total_debt: -debtToReverse }
+        });
+      }
     }
 
     res.status(200).json({ success: true, message: 'Bill deleted successfully' });
