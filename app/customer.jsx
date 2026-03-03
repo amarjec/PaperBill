@@ -111,14 +111,14 @@ export default function CustomerScreen() {
       )}
 
       {/* Add New Customer FAB */}
-      <PermissionGuard module="customers" action="create">
+      {/* <PermissionGuard module="customers" action="create"> */}
       <TouchableOpacity 
         onPress={() => { setFormData({ name: '', phone_number: '', address: '' }); setFormModalVisible(true); }}
         className="absolute bottom-10 right-6 bg-primaryText w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-primaryText/40 border-4 border-bg"
       >
         <Feather name="user-plus" size={24} color="#e5fc01" />
       </TouchableOpacity>
-      </PermissionGuard>
+      {/* </PermissionGuard> */}
 
       {/* Form Modal (Create Customer) */}
       <Modal visible={formModalVisible} transparent animationType="slide">

@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.amarjec.paperbill"
+      "package": "com.amarjec.paperbill",
+      "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",
@@ -50,6 +51,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "518aa721-6601-41e0-83d4-01c913e58b55"
+      }
     }
   }
 }

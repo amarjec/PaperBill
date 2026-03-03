@@ -11,7 +11,8 @@ export function useLogin() {
   useEffect(() => {
     // Standard Google Configuration
     GoogleSignin.configure({
-       webClientId: '67101226269-osb1bmb7a2b40hjnr0nolmrrps0lelcc.apps.googleusercontent.com',
+      webClientId: '67101226269-osb1bmb7a2b40hjnr0nolmrrps0lelcc.apps.googleusercontent.com',
+      androidClientId: '67101226269-leg7gl71sutrnfvpv5196gr4sqgta77v.apps.googleusercontent.com',
       iosClientId: '67101226269-n21pml7l3og8aadasvfltmic8p65pref.apps.googleusercontent.com',
       offlineAccess: true,
     });
