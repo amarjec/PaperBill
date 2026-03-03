@@ -20,7 +20,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.amarjec.paperbill",
-      "usesCleartextTraffic": true
+      // "usesCleartextTraffic": true
     },
     "web": {
       "output": "static",
