@@ -5,6 +5,8 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCategories } from '@/src/hooks/useCategories';
 import { CategoryCard } from '@/src/components/inventory/CategoryCard';
+import { SearchBar } from '@/src/components/ui/SearchBar';
+import { FloatingButton } from '@/src/components/ui/FloatingButton';
 
 export default function HomeTab() {
   const router = useRouter();
@@ -19,7 +21,7 @@ export default function HomeTab() {
 
   // --- Handlers ---
   const handleLongPress = (category) => {
-    Vibration.vibrate(50); // Haptic feedback
+    Vibration.vibrate(50); 
     setSelectedCategory(category);
     setActionModalVisible(true);
   };
@@ -32,7 +34,6 @@ export default function HomeTab() {
 
   const openEditModal = () => {
     setActionModalVisible(false);
-    // FIX: Safely access name with ?. and provide a fallback string
     setCategoryName(selectedCategory?.name || ''); 
     setFormModalVisible(true);
   };
@@ -41,11 +42,9 @@ export default function HomeTab() {
     setActionModalVisible(false);
     Alert.alert(
       "Delete Category",
-      // FIX: Safely access name
       `Are you sure you want to delete "${selectedCategory?.name || 'this category'}"? All related products will be affected.`,
       [
         { text: "Cancel", style: "cancel" },
-        // FIX: Safely access _id
         { text: "Delete", style: "destructive", onPress: () => handleDelete(selectedCategory?._id) }
       ]
     );
@@ -53,49 +52,45 @@ export default function HomeTab() {
 
   const submitForm = async () => {
     if (!categoryName.trim()) return Alert.alert("Error", "Name is required");
-    // FIX: Safely pass _id (will be undefined if it's a new category, which is correct)
     const success = await handleSave(categoryName, selectedCategory?._id);
     if (success) {
       setFormModalVisible(false);
-      setSelectedCategory(null); // Clear selection after save
+      setSelectedCategory(null); 
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-bg">
-      <View className="px-6 pt-6 pb-2">
-        <Text className="text-primaryText text-3xl font-black">Inventory</Text>
-        <Text className="text-secondaryText font-medium">Manage Categories</Text>
-      </View>
+    <SafeAreaView className="flex-1 bg-bg" edges={['left', 'right']}>
+      
+      {/* 1. Reusable Search Bar */}
+      <SearchBar 
+        value={searchTerm} 
+        onChangeText={setSearchTerm} 
+        placeholder="Search categories..." 
+      />
 
-      {/* Search Bar */}
-      <View className="px-6 mb-4 mt-4">
-        <View className="bg-white flex-row items-center px-4 py-3 rounded-2xl border border-card shadow-sm">
-          <Feather name="search" size={20} color="#bfb5a8" />
-          <TextInput 
-            placeholder="Search categories..." 
-            placeholderTextColor="#bfb5a8"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            className="flex-1 ml-3 text-primaryText font-bold"
-          />
-          {searchTerm.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchTerm('')}>
-              <Feather name="x-circle" size={18} color="#bfb5a8" />
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* Header Tags */}
+      <View className="px-8 flex-row justify-between items-center mb-4 mt-2">
+        <Text className="text-primaryText font-black text-lg tracking-tight">All Categories</Text>
+        <Text className="text-secondaryText font-bold text-[10px] uppercase tracking-widest">{categories.length} Items</Text>
       </View>
 
       {/* Category Grid */}
       {loading ? (
-        <View className="flex-1 justify-center items-center"><ActivityIndicator size="large" color="#1f2617" /></View>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#e5fc01" />
+        </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 120 }}>
           {categories.length === 0 ? (
-            <View className="items-center justify-center mt-20 opacity-30">
-              <MaterialCommunityIcons name="package-variant" size={60} color="#393f35" />
-              <Text className="text-primaryText font-bold mt-4">No categories found</Text>
+            <View className="items-center justify-center mt-12 bg-card/20 border-2 border-dashed border-card/60 rounded-[32px] p-10">
+              <View className="w-16 h-16 bg-white rounded-2xl items-center justify-center shadow-sm mb-4">
+                <MaterialCommunityIcons name="package-variant-closed" size={32} color="#bfb5a8" />
+              </View>
+              <Text className="text-primaryText font-black text-lg mb-1">No Categories Yet</Text>
+              <Text className="text-secondaryText text-center font-medium text-xs leading-5">
+                Tap the + button below to add your first inventory category.
+              </Text>
             </View>
           ) : (
             <View className="flex-row flex-wrap justify-between">
@@ -112,34 +107,35 @@ export default function HomeTab() {
         </ScrollView>
       )}
 
-      {/* Floating Action Button (FAB) */}
-      <TouchableOpacity 
-        onPress={openCreateModal}
-        className="absolute bottom-28 right-6 bg-accent w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-accent/40 border-4 border-bg"
-      >
-        <Feather name="plus" size={28} color="#1f2617" />
-      </TouchableOpacity>
+      {/* 2. Reusable FAB */}
+      <FloatingButton onPress={openCreateModal} bottomOffset={30} />
 
       {/* 1. Action Modal (Triggered by Long Press) */}
       <Modal visible={actionModalVisible} transparent animationType="fade">
-        <TouchableOpacity activeOpacity={1} onPress={() => setActionModalVisible(false)} className="flex-1 bg-black/60 justify-end">
-          <View className="bg-bg p-6 rounded-t-[40px]">
-            <Text className="text-secondaryText text-sm font-bold uppercase tracking-widest text-center mb-6">
-              Options for {selectedCategory?.name || 'Category'}
+        <TouchableOpacity activeOpacity={1} onPress={() => setActionModalVisible(false)} className="flex-1 bg-primaryText/40 justify-end">
+          <View className="bg-bg p-6 rounded-t-[40px] shadow-2xl">
+            <View className="w-12 h-1.5 bg-card rounded-full self-center mb-6" />
+            
+            <Text className="text-secondaryText text-xs font-black uppercase tracking-widest text-center mb-6">
+              {selectedCategory?.name || 'Category Options'}
             </Text>
             
-            <TouchableOpacity onPress={openEditModal} className="bg-white p-5 rounded-2xl flex-row items-center mb-3 shadow-sm border border-card">
-              <Feather name="edit-2" size={20} color="#1f2617" />
-              <Text className="text-primaryText font-black text-lg ml-4">Edit Category</Text>
+            <TouchableOpacity onPress={openEditModal} className="bg-white p-5 rounded-[24px] flex-row items-center mb-3 shadow-sm border border-card/40">
+              <View className="bg-bg p-2 rounded-full">
+                <Feather name="edit-2" size={18} color="#1f2617" />
+              </View>
+              <Text className="text-primaryText font-black text-base ml-4">Edit Category</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={confirmDelete} className="bg-red-50 p-5 rounded-2xl flex-row items-center mb-6 shadow-sm border border-red-100">
-              <Feather name="trash-2" size={20} color="#ef4444" />
-              <Text className="text-red-600 font-black text-lg ml-4">Delete Category</Text>
+            <TouchableOpacity onPress={confirmDelete} className="bg-red-50 p-5 rounded-[24px] flex-row items-center mb-6 shadow-sm border border-red-100">
+              <View className="bg-red-100 p-2 rounded-full">
+                <Feather name="trash-2" size={18} color="#ef4444" />
+              </View>
+              <Text className="text-red-600 font-black text-base ml-4">Delete Category</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => setActionModalVisible(false)} className="py-4 items-center">
-              <Text className="text-secondaryText font-bold text-lg">Cancel</Text>
+              <Text className="text-secondaryText font-bold text-sm uppercase tracking-widest">Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -147,36 +143,42 @@ export default function HomeTab() {
 
       {/* 2. Form Modal (Create / Update) */}
       <Modal visible={formModalVisible} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-black/70 justify-end">
-          <View className="bg-bg p-8 rounded-t-[40px]">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-primaryText/40 justify-end">
+          <View className="bg-bg p-8 rounded-t-[40px] shadow-2xl">
+            <View className="w-12 h-1.5 bg-card rounded-full self-center mb-6" />
+
             <View className="flex-row justify-between items-center mb-8">
-              <Text className="text-primaryText text-2xl font-black">
+              <Text className="text-primaryText text-3xl font-black tracking-tight">
                 {selectedCategory ? 'Edit Category' : 'New Category'}
               </Text>
-              <TouchableOpacity onPress={() => setFormModalVisible(false)} className="bg-card p-2 rounded-full">
+              <TouchableOpacity onPress={() => setFormModalVisible(false)} className="bg-card/50 p-2.5 rounded-full">
                 <Feather name="x" size={20} color="#1f2617" />
               </TouchableOpacity>
             </View>
 
-            <View className="mb-8">
-              <Text className="text-secondaryText text-[10px] font-bold uppercase ml-4 mb-2">Category Name</Text>
+            <View className="mb-10">
+              <Text className="text-secondaryText text-[11px] font-black uppercase tracking-widest ml-4 mb-3">Category Name</Text>
               <TextInput 
                 autoFocus
                 value={categoryName}
                 onChangeText={setCategoryName}
                 placeholder="e.g. Mobile Phones"
                 placeholderTextColor="#bfb5a8"
-                className="bg-white p-5 rounded-2xl border border-card text-primaryText font-bold text-base shadow-sm"
+                className="bg-white px-6 py-5 rounded-[28px] border border-card/60 text-primaryText font-black text-lg shadow-sm"
               />
             </View>
 
             <TouchableOpacity 
               onPress={submitForm}
               disabled={isSubmitting}
-              className="bg-primaryText py-5 rounded-[22px] flex-row justify-center items-center shadow-lg"
+              className="bg-primaryText py-5 rounded-[28px] flex-row justify-center items-center shadow-xl active:opacity-80"
+              style={{ shadowColor: '#1f2617', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}
             >
               {isSubmitting ? <ActivityIndicator color="#e5fc01" /> : (
-                <Text className="text-accent font-black text-lg tracking-widest uppercase">Save</Text>
+                <>
+                  <Text className="text-accent font-black text-sm tracking-widest uppercase mr-2">Save Category</Text>
+                  <Feather name="check" size={18} color="#e5fc01" />
+                </>
               )}
             </TouchableOpacity>
           </View>
