@@ -9,7 +9,7 @@ import { paymentApi } from '@/src/api/paymentApi';
 
 export default function SubscriptionScreen() {
   const router = useRouter();
-  const { user, updateUser } = useAuth();
+  const { user, updateSessionUser } = useAuth();
   
   // Tracks which plan button is currently loading ('monthly' or 'yearly')
   const [loadingPlan, setLoadingPlan] = useState(null);
@@ -85,12 +85,12 @@ export default function SubscriptionScreen() {
     if (!res.success) throw new Error("Failed to create order");
 
     const options = {
-      description: `ShopOS Premium - ${planId === 'yearly' ? 'Annual' : 'Monthly'} Plan`,
+      description: `PaperBill Premium - ${planId === 'yearly' ? 'Annual' : 'Monthly'} Plan`,
       image: 'https://your-logo-url.png', 
       currency: 'INR',
       key: RAZORPAY_KEY_ID,
       order_id: res.order.id, 
-      name: 'ShopOS Premium',
+      name: 'PaperBill Premium',
       prefill: {
         email: user?.email || '',
         contact: user?.phone_number || '',
@@ -123,11 +123,10 @@ export default function SubscriptionScreen() {
         
         try {
           // If updateUser crashes (e.g., storage error), it won't trigger a fake "Server Error" anymore
-          if (updateUser) {
-             await updateUser({ 
-               isPremium: true, 
-               subscription: verifyRes.user.subscription 
-             });
+          if (updateSessionUser) {
+            // We use the FULL updated user from the backend response,
+            // not a partial object. This ensures all fields stay in sync.
+            await updateSessionUser(verifyRes.user);
           }
         } catch (localError) {
           console.log("Local state update skipped. Profile screen will fetch fresh data.");
