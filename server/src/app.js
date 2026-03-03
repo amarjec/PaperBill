@@ -13,6 +13,8 @@ import billRoutes from './routes/bill.route.js';
 import inventoryRoutes from './routes/inventory.route.js';
 import paymentRoutes from './routes/payment.route.js';
 import analyticsRoutes from './routes/analytics.route.js';
+import subCategoryRoutes from './routes/subcategory.route.js';
+
 
 
 const app = express();
@@ -30,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/subcategories', subCategoryRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/bills', billRoutes);
