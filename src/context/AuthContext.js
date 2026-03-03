@@ -37,7 +37,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // NEW: Staff Login
+  // Staff Login
   const staffLogin = async (phoneNumber, pin, deviceId) => {
     try {
       const data = await authApi.staffLogin(phoneNumber, pin, deviceId);
@@ -52,6 +52,12 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // --- THE FIX: NEW GLOBAL UPDATE FUNCTION ---
+  const updateSessionUser = async (updatedUserData) => {
+    setUser(updatedUserData); // Instantly updates Header
+    await storageService.saveAuth(token, updatedUserData); // Saves to device storage
+  };
+
   const logout = async () => {
     try { await authApi.logout(); } catch (e) {}
     await storageService.clearAuth();
@@ -60,8 +66,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    // Make sure to export the new staffLogin function here!
-    <AuthContext.Provider value={{ user, token, loading, login, staffLogin, logout, setUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, staffLogin, logout, setUser, updateSessionUser }}>
       {children}
     </AuthContext.Provider>
   );

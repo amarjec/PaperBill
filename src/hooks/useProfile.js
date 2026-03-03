@@ -6,7 +6,7 @@ import { authApi } from '../api/authApi';
 import { useAuth } from '../context/AuthContext';
 
 export function useProfile() {
-  const { user, setUser, updateUser, logout: contextLogout } = useAuth();
+  const { user, setUser, updateSessionUser, logout: contextLogout } = useAuth();
   
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,8 +21,6 @@ export function useProfile() {
   const [pinForm, setPinForm] = useState({ pin: '', confirmPin: '' });
 
   const fetchProfile = async () => {
-    // If the user is Staff, DO NOT hit the Owner profile API. 
-    // Just use the context data.
     if (user?.role === 'Staff' || user?.permissions) {
       setProfile(user);
       setLoading(false);
@@ -36,16 +34,13 @@ export function useProfile() {
       if (res.success) {
         setProfile(res.user);
         
-        // --- LOOP PREVENTION FIX ---
-        // Only update the global context if crucial fields are out of sync.
-        // This stops the infinite re-rendering cycle.
         const needsUpdate = 
           user?.isPremium !== res.user.isPremium || 
           user?.has_inventory !== res.user.has_inventory;
 
         if (needsUpdate) {
-          if (updateUser) {
-             updateUser(res.user); 
+          if (updateSessionUser) {
+             updateSessionUser(res.user); 
           } else {
              setUser(res.user);    
           }
@@ -58,16 +53,11 @@ export function useProfile() {
     }
   };
 
-  // --- DEPENDENCY FIX ---
-  // Leave the dependency array empty so it only fires when the screen comes into focus,
-  // NOT every time the user object changes in the background.
   useFocusEffect(
     useCallback(() => { 
       fetchProfile(); 
     }, []) 
   );
-
-  useFocusEffect(useCallback(() => { fetchProfile(); }, [user]));
 
   const openEditModal = () => {
     setEditForm({
@@ -85,7 +75,12 @@ export function useProfile() {
     try {
       const res = await userApi.updateProfile(editForm);
       if (res.success) {
-        setProfile(res.user);
+        setProfile(res.user); // Updates local screen state
+        
+        if (updateSessionUser) {
+          await updateSessionUser(res.user); 
+        }
+
         setEditModalVisible(false);
         Alert.alert("Success", "Profile updated successfully!");
       }

@@ -39,12 +39,12 @@ export default function GlobalHeader() {
       className="bg-primaryText px-6 pb-4 border-b border-secondaryText/50 shadow-sm"
       style={{ paddingTop: insets.top + 16 }}
     >
-      <View className="flex-row justify-between items-start mt-2">
+      <View className="flex-row justify-between items-start">
         
         {/* --- LEFT SIDE: Dynamic Info --- */}
         <View className="flex-1 pr-4 justify-center">
           <Text 
-            className="text-bg font-black text-3xl tracking-tight mb-1.5" 
+            className="text-bg font-black text-2xl tracking-tight mb-1.5" 
             numberOfLines={1}
           >
             {titleText}

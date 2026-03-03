@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import GlobalHeader from '../../src/components/GlobalHeader';
 
 export default function TabLayout() {
@@ -8,57 +8,69 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         header: () => <GlobalHeader />,
+        
+        // --- TRADITIONAL, PRACTICAL FOOTER ---
         tabBarStyle: {
-          backgroundColor: '#1f2617', // primaryText from your theme
-          borderTopWidth: 0,
-          height: 75,
-          paddingBottom: 15,
-          paddingTop: 10,
-          marginHorizontal: 20,
-          marginBottom: 20,
-          borderRadius: 30,
-          position: 'absolute',
-          elevation: 10,
-          shadowColor: '#000',
-          shadowOpacity: 0.1,
-          shadowRadius: 10,
+          backgroundColor: '#1f2617', // Solid dark primaryText background
+          borderTopWidth: 4, // Adds a subtle top border line
+          borderTopColor: '#393f35', // secondaryText color for the border
+          height: Platform.OS === 'ios' ? 95 : 75, // Taller on iOS for the home bar
+          paddingBottom: Platform.OS === 'ios' ? 25 : 8,
+          paddingTop: 8,
+          elevation: 0, // Removes Android shadow for a completely flat, grounded look
         },
-        tabBarActiveTintColor: '#e5fc01', // accent from your theme
-        tabBarInactiveTintColor: '#bfb5a860', // secondary with opacity
+        
+        // --- CLEAR ACTIVE/INACTIVE STATES ---
+        tabBarActiveTintColor: '#e5fc01', // Bright accent color for the active tab
+        tabBarInactiveTintColor: '#bfb5a8', // Muted secondary color for inactive tabs
+        
+        // --- TYPOGRAPHY ---
         tabBarLabelStyle: {
           fontWeight: '900',
           fontSize: 10,
           textTransform: 'uppercase',
           letterSpacing: 0.5,
+          marginTop: 4,
         },
+        
+        // Un-mount screens when switching to free up phone memory
+        unmountOnBlur: true, 
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <Feather name="home" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="home" size={22} color={color} />
+          ),
         }}
       />
        <Tabs.Screen
         name="ledger"
         options={{
           title: 'Ledger',
-          tabBarIcon: ({ color }) => <Feather name="book-open" size={24} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="book-open" size={22} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: 'History',
-          tabBarIcon: ({ color }) => <Feather name="list" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="list" size={22} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Feather name="user" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Feather name="user" size={22} color={color} />
+          ),
         }}
       />
     </Tabs>
