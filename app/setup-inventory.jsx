@@ -9,7 +9,7 @@ import apiClient from '@/src/api/apiClient';
 
 export default function SetupInventoryScreen() {
     const router = useRouter();
-    const { user, setUser } = useAuth(); // ACCESS SETUSER
+    const { user, updateSessionUser } = useAuth();
     const [loading, setLoading] = useState(false);
 
     const businessTypes = [
@@ -43,13 +43,11 @@ export default function SetupInventoryScreen() {
                             });
 
                             if (data.success) {
-                                // 2. CRITICAL: Update the user state in Context
-                                // This tells _layout.jsx that the inventory setup is finished.
-                                const updatedUser = { ...user, has_inventory: true };
-                                setUser(updatedUser); 
-                                
-                                // 3. The Auth Guard in _layout.jsx will now handle the redirect to /(tabs)
-                                Alert.alert("Success", "Your shop is ready!");
+                            // This saves to BOTH React context AND AsyncStorage,
+                            // so the setup screen never reappears after restart
+                            const updatedUser = { ...user, has_inventory: true };
+                            await updateSessionUser(updatedUser);
+                            Alert.alert("Success", "Your shop is ready!");
                             }
                         } catch (err) {
                             Alert.alert("Error", "Failed to build inventory. Please try again.");
@@ -64,11 +62,10 @@ export default function SetupInventoryScreen() {
         );
     };
 
-    const handleSkip = () => {
-        // Even if they skip, we mark has_inventory as true so they aren't stuck on this screen
+    const handleSkip = async () => {
         const updatedUser = { ...user, has_inventory: true };
-        setUser(updatedUser);
-        router.push('/(tabs)/profile');
+        await updateSessionUser(updatedUser); // Persists to storage
+        router.push('/(tabs)');
     };
 
     if (loading) {

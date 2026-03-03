@@ -183,9 +183,7 @@ export const importInventoryTemplate = async (req, res) => {
             }
         }
 
-        // --- PERSISTENCE FIX ---
-        // Save the flag to the database so the setup screen never comes back
-        // await User.findByIdAndUpdate(owner_id, { has_inventory: true });
+        await User.findByIdAndUpdate(owner_id, { has_inventory: true });
 
         res.status(200).json({ success: true, message: "Inventory successfully pre-filled!" });
 
