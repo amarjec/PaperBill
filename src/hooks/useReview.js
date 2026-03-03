@@ -123,6 +123,6 @@ export function useReview() {
     discount, setDiscount, extraFare, setExtraFare, amountPaid, setAmountPaid,
     totals, isSubmitting, isProfitVisible, pinModalVisible, setPinModalVisible, 
     pinInput, setPinInput, isVerifyingPin, handleVerifyPin, generateBill, safeNum,
-    isProfitVisible, setIsProfitVisible, pinModalVisible, setPinModalVisible,
+   setIsProfitVisible
   };
 }
