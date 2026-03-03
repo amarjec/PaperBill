@@ -16,7 +16,7 @@ export default function CustomerScreen() {
   const { customers, loading, isSubmitting, handleSave } = useCustomers(searchTerm);
 
   const [formModalVisible, setFormModalVisible] = useState(false);
-  const [formData, setFormData] = useState({ name: '', phone_number: '', address: '' });
+  const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
 
   // Select Customer & Go to Review
   const proceedToReview = (customer) => {
@@ -113,7 +113,7 @@ export default function CustomerScreen() {
       {/* Add New Customer FAB */}
       {/* <PermissionGuard module="customers" action="create"> */}
       <TouchableOpacity 
-        onPress={() => { setFormData({ name: '', phone_number: '', address: '' }); setFormModalVisible(true); }}
+        onPress={() => { setFormData({ name: '', phone: '', address: '' }); setFormModalVisible(true); }}
         className="absolute bottom-10 right-6 bg-primaryText w-16 h-16 rounded-full items-center justify-center shadow-lg shadow-primaryText/40 border-4 border-bg"
       >
         <Feather name="user-plus" size={24} color="#e5fc01" />
@@ -136,7 +136,7 @@ export default function CustomerScreen() {
               <TextInput value={formData.name} onChangeText={v => setFormData({...formData, name: v})} className="bg-white p-4 rounded-2xl border border-card font-bold mb-4 shadow-sm" placeholder="e.g. Rahul Kumar" />
               
               <Text className="text-secondaryText text-[10px] font-bold uppercase ml-2 mb-2">Phone Number</Text>
-              <TextInput value={formData.phone_number} keyboardType="phone-pad" maxLength={10} onChangeText={v => setFormData({...formData, phone_number: v})} className="bg-white p-4 rounded-2xl border border-card font-bold mb-4 shadow-sm" placeholder="10-digit number" />
+              <TextInput value={formData.phone} keyboardType="phone-pad" maxLength={10} onChangeText={v => setFormData({...formData, phone: v})} className="bg-white p-4 rounded-2xl border border-card font-bold mb-4 shadow-sm" placeholder="10-digit number" />
               
               <Text className="text-secondaryText text-[10px] font-bold uppercase ml-2 mb-2">Address / Notes</Text>
               <TextInput value={formData.address} onChangeText={v => setFormData({...formData, address: v})} className="bg-white p-4 rounded-2xl border border-card font-bold mb-6 shadow-sm" placeholder="Optional details" multiline />

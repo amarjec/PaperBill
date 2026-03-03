@@ -17,7 +17,7 @@ export const CustomerCard = ({ customer, onPress }) => (
           {customer.name}
         </Text>
         <Text className="text-secondaryText text-xs font-bold mt-1">
-          {customer.phone_number || 'No phone number'}
+          {customer.phone || 'No phone number'}
         </Text>
       </View>
     </View>
