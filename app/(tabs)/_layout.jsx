@@ -58,16 +58,16 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: 'History',
+          title: 'Bills',
           tabBarIcon: ({ color, focused }) => (
             <Feather name="list" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="settings"
         options={{
-          title: 'Profile',
+          title: 'Settings',
           tabBarIcon: ({ color, focused }) => (
             <Feather name="user" size={22} color={color} />
           ),

@@ -14,7 +14,10 @@ export function useProfile() {
 
   // Edit Profile Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editForm, setEditForm] = useState({ business_name: '', phone_number: '', address: '' });
+  const [editForm, setEditForm] = useState({ name: '', business_name: '', phone_number: '', address: '' });
+
+  // Name-only update
+  const [nameModalVisible, setNameModalVisible] = useState(false);
 
   // PIN Modal State
   const [pinModalVisible, setPinModalVisible] = useState(false);
@@ -61,11 +64,40 @@ export function useProfile() {
 
   const openEditModal = () => {
     setEditForm({
+      name:          profile?.name          || '',
       business_name: profile?.business_name || '',
-      phone_number: profile?.phone_number || '',
-      address: profile?.address || ''
+      phone_number:  profile?.phone_number  || '',
+      address:       profile?.address       || '',
     });
     setEditModalVisible(true);
+  };
+
+  const openNameModal = () => {
+    setNameModalVisible(true);
+  };
+
+  const handleUpdateName = async (newName) => {
+    if (!newName.trim()) return Alert.alert('Error', 'Name cannot be empty.');
+    setIsProcessing(true);
+    try {
+      const payload = {
+        name:          newName.trim(),
+        business_name: profile?.business_name || '',
+        phone_number:  profile?.phone_number  || '',
+        address:       profile?.address       || '',
+      };
+      const res = await userApi.updateProfile(payload);
+      if (res.success) {
+        setProfile(res.user);
+        if (updateSessionUser) await updateSessionUser(res.user);
+        setNameModalVisible(false);
+        Alert.alert('Updated', 'Name updated successfully.');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to update name.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleUpdateProfile = async () => {
@@ -153,6 +185,7 @@ export function useProfile() {
 
   return {
     profile, loading, isProcessing, isStaff: user?.role === 'Staff' || !!user?.permissions,
+    nameModalVisible, setNameModalVisible, openNameModal, handleUpdateName,
     editModalVisible, setEditModalVisible, editForm, setEditForm, openEditModal, handleUpdateProfile,
     pinModalVisible, setPinModalVisible, pinForm, setPinForm, handleSetPin,
     handleLogout, handleDeleteAccount

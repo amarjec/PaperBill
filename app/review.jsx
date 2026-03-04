@@ -204,7 +204,7 @@ export default function ReviewScreen() {
         <View className="flex-1">
           <Text className="text-primaryText text-xl font-black tracking-tight">Review Bill</Text>
           <Text className="text-secondaryText text-[11px] font-bold mt-0.5">
-            {cartItems.length} items  •  Swipe ← to remove
+            {cartItems.length} items
           </Text>
         </View>
 
@@ -212,9 +212,9 @@ export default function ReviewScreen() {
         <TouchableOpacity
           onPress={() => setPinModalVisible(true)}
           activeOpacity={0.8}
-          className="bg-green-50 border border-green-200 w-10 h-10 rounded-2xl items-center justify-center mr-2"
+          className="bg-card border-primaryText border-1 w-10 h-10 rounded-2xl items-center justify-center mr-4"
         >
-          <Feather name="lock" size={16} color="#16a34a" />
+          <Feather name="lock" size={18} color="#1f2617" />
         </TouchableOpacity>
 
         {/* Add item — labelled button so user understands it */}
@@ -307,7 +307,7 @@ export default function ReviewScreen() {
         <View className="px-5 mb-4">
           <Pressable
             onPress={() => setShowAdjustments(!showAdjustments)}
-            className="bg-white rounded-[22px] px-4 py-3.5 flex-row items-center justify-between border border-card active:opacity-70"
+            className="bg-white rounded-[22px] px-4 py-3 flex-row items-center justify-between border border-card active:opacity-70"
           >
             <View className="flex-row items-center">
               <View className="bg-card w-8 h-8 rounded-xl items-center justify-center mr-3">
@@ -381,7 +381,7 @@ export default function ReviewScreen() {
 
         {/* ── 5. Payment card (separate) ───────────────────────────────────── */}
         <View className="px-5 mb-4">
-          <View className="bg-white rounded-[22px] px-5 py-4 border border-card"
+          <View className="bg-white rounded-[22px] px-5 py-3 border border-card"
             style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
           >
             {/* Single checkbox: "Full payment received" */}
