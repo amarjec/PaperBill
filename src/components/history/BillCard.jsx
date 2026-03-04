@@ -1,53 +1,54 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 export const BillCard = ({ bill }) => {
   const router = useRouter();
 
-  // Dynamic Status Colors
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'Paid': return 'text-[#4ade80] bg-[#4ade80]/10 border-[#4ade80]/20';
-      case 'Unpaid': return 'text-red-500 bg-red-500/10 border-red-500/20';
-      case 'Partially Paid': return 'text-orange-400 bg-orange-400/10 border-orange-400/20';
-      case 'Cancelled': return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
-      default: return 'text-accent bg-accent/10 border-accent/20';
-    }
-  };
-
-  // Format Date (e.g., "12 Oct 2026")
+  // Format Date
   const dateObj = new Date(bill.createdAt);
   const dateString = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  // Mode Styling (Colors for Wholesale vs Retail)
+  const isWholesale = bill.price_mode === 'Wholesale';
+  const modeTextColor = isWholesale ? 'text-purple-600' : 'text-blue-600';
+  const modeBgColor = isWholesale ? 'bg-purple-50' : 'bg-blue-50';
+
+  // Safely extract creator name
+  const creatorName = bill.created_by?.name || (typeof bill.created_by === 'string' ? bill.created_by : 'Admin');
 
   return (
     <Pressable
       onPress={() => router.push(`/bill/${bill._id}`)}
-      className="bg-white p-5 rounded-3xl mb-3 border border-card shadow-sm active:opacity-70"
+      className="bg-white px-4 py-4 rounded-2xl mb-3 border border-card shadow-sm active:opacity-70 flex-row justify-between items-center"
     >
-      <View className="flex-row justify-between items-start mb-3">
-        <View>
-          <Text className="text-primaryText font-black text-lg">
+      {/* Left Side: Name, Mode Badge, and Date/Creator */}
+      <View className="flex-1 pr-3">
+        <View className="flex-row items-center mb-1">
+          <Text className="text-primaryText font-black text-[15px] flex-shrink" numberOfLines={1}>
             {bill.customer_id?.name || 'Walk-in Customer'}
           </Text>
-          <Text className="text-secondaryText text-[11px] font-bold tracking-widest uppercase mt-0.5">
-            {bill.bill_number} • {dateString}
-          </Text>
+          
+          {/* Dynamic Retail/Wholesale Tag */}
+          <View className={`${modeBgColor} px-1.5 py-0.5 rounded ml-2`}>
+            <Text className={`${modeTextColor} text-[8px] font-black uppercase tracking-widest`}>
+              {bill.price_mode || 'Retail'}
+            </Text>
+          </View>
         </View>
-        <View className={`px-2.5 py-1 rounded-md border ${getStatusColor(bill.status)}`}>
-          <Text className={`text-[10px] font-black uppercase tracking-widest ${getStatusColor(bill.status).split(' ')[0]}`}>
-            {bill.is_estimate ? 'Estimate' : bill.status}
-          </Text>
-        </View>
+        
+        {/* Subtitle: Date and Creator */}
+        <Text className="text-secondaryText text-[10px] font-bold uppercase mt-0.5">
+          {dateString}
+        </Text>
       </View>
 
-      <View className="flex-row justify-between items-center border-t border-card pt-3">
-        <View className="flex-row items-center">
-          <Feather name="shopping-bag" size={14} color="#bfb5a8" />
-          <Text className="text-secondaryText font-bold text-xs ml-2">{bill.items?.length || 0} Items</Text>
-        </View>
-        <Text className="text-primaryText font-black text-lg">₹{bill.total_amount}</Text>
+      {/* Right Side: Just the Amount */}
+      <View className="flex items-end justify-center">
+        <Text className="text-primaryText font-black text-[14px]">
+          ₹{bill.total_amount?.toLocaleString('en-IN') || 0}
+        </Text>
+        <Text className="text-secondaryText text-[10px] font-medium uppercase mt-0.5">By {creatorName}</Text>
       </View>
     </Pressable>
   );
