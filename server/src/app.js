@@ -25,9 +25,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Mount Routes
-app.use('/api/health', (req, res) => {
-  res.send("Server is running!")
-});
+app.get('/api/health', (req, res) => { res.send("Server is running!")});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/staff', staffRoutes);

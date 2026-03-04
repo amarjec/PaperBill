@@ -2,6 +2,7 @@ import PreInventoryItem from '../models/PreInventoryItem.js';
 import Category from '../models/Category.js';
 import Subcategory from '../models/Subcategory.js';
 import Product from '../models/Product.js';
+import User from '../models/User.js'; 
 
 export const importPreInventory = async (req, res) => {
   try {
@@ -105,8 +106,6 @@ export const getPreInventoryTemplates = async (req, res) => {
   }
 };
 
-
-import User from '../models/User.js'; // <--- THIS WAS THE MISSING LINE!
 
 export const importInventoryTemplate = async (req, res) => {
     try {

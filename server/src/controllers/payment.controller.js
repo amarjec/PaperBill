@@ -5,18 +5,18 @@ import User from '../models/User.js';
 // Define your one-time plans here
 const plans = {
   'monthly': { 
-    amount: process.env.MONTHLY_BILLING_PRICE || 199, // Fallback to 199 if env is missing
-    days: process.env.MONTHLY_BILLING_DAYS || 30 
+    amount: Number(process.env.MONTHLY_BILLING_PRICE),
+    days: Number(process.env.MONTHLY_BILLING_DAYS) 
   },
   'yearly': { 
-    amount: process.env.ANNUAL_BILLING_PRICE || 1999, // Fallback to 1999 if env is missing
-    days: process.env.ANNUAL_BILLING_DAYS || 365 
+    amount: Number(process.env.ANNUAL_BILLING_PRICE), 
+    days: Number(process.env.ANNUAL_BILLING_DAYS)
   }
 };
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_SECRET, // Using current project's env variable
+  key_secret: process.env.RAZORPAY_SECRET, 
 });
 
 // 1. Create Order (One-Time Payment)

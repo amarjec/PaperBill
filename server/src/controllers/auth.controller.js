@@ -32,33 +32,6 @@ export const ownerGoogleLogin = async (req, res) => {
   }
 };
 
-export const requestStaffOtp = async (req, res) => {
-  try {
-    const { phoneNumber, ownerId } = req.body;
-    const staff = await Staff.findOne({ phone_number: phoneNumber, owner_id: ownerId, is_deleted: false });
-    
-    if (!staff) return res.status(404).json({ success: false, message: 'Staff not found' });
-
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    staff.assigned_pin = otp; // Temporarily store OTP
-    await staff.save();
-
-    // Grab the Socket.io instance attached to the Express app in server.js
-    const io = req.app.get('io');
-    if (io) {
-      // Emit the event to the Owner's specific room
-      io.to(ownerId.toString()).emit('staff_otp_request', { 
-        staffName: staff.name, 
-        otp 
-      });
-    }
-
-    res.status(200).json({ success: true, message: 'OTP sent to Owner device' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-};
-
 export const verifyStaffOtp = async (req, res) => {
   try {
     const { phoneNumber, otp, deviceId } = req.body;
