@@ -9,7 +9,14 @@ export const customerApi = {
     const { data } = await apiClient.post('/customers', payload);
     return data;
   },
-  // NEW KHATA ENDPOINTS
+  update: async (id, payload) => {
+    const { data } = await apiClient.put(`/customers/${id}`, payload);
+    return data;
+  },
+  delete: async (id) => {
+    const { data } = await apiClient.delete(`/customers/${id}`);
+    return data;
+  },
   getKhata: async (id) => {
     const { data } = await apiClient.get(`/customers/${id}/khata`);
     return data;
@@ -17,5 +24,5 @@ export const customerApi = {
   recordKhataPayment: async (id, payload) => {
     const { data } = await apiClient.post(`/customers/${id}/khata-payment`, payload);
     return data;
-  }
+  },
 };

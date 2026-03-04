@@ -3,8 +3,8 @@ import { Alert } from 'react-native';
 import { customerApi } from '../api/customerApi';
 
 export function useCustomers(searchTerm = '') {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [customers, setCustomers]   = useState([]);
+  const [loading, setLoading]       = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchCustomers = async () => {
@@ -13,39 +13,76 @@ export function useCustomers(searchTerm = '') {
       const data = await customerApi.getAll();
       if (data.success) setCustomers(data.customers || []);
     } catch (error) {
-      Alert.alert("Error", "Could not load customers.");
+      Alert.alert('Error', 'Could not load customers.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchCustomers();
-  }, []);
+  useEffect(() => { fetchCustomers(); }, []);
 
+  // Bug #17 fix: search against `phone` not `phone_number`
   const filteredCustomers = useMemo(() => {
     if (!searchTerm) return customers;
-    const lowerSearch = searchTerm.toLowerCase();
-    // Search by name or phone number
-    return customers.filter(c => 
-      c.name?.toLowerCase().includes(lowerSearch) || 
+    const lower = searchTerm.toLowerCase();
+    return customers.filter(c =>
+      c.name?.toLowerCase().includes(lower) ||
       c.phone?.includes(searchTerm)
     );
   }, [customers, searchTerm]);
 
-  const handleSave = async (formData) => {
+  // CREATE
+  const handleCreate = async (formData) => {
     setIsSubmitting(true);
     try {
       const data = await customerApi.create(formData);
       await fetchCustomers();
-      return data.customer; // Return the created customer so we can auto-select them
+      return data.customer;
     } catch (error) {
-      Alert.alert("Error", "Failed to add new customer.");
+      Alert.alert('Error', 'Failed to add customer.');
       return null;
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return { customers: filteredCustomers, loading, isSubmitting, handleSave, refresh: fetchCustomers };
+  // UPDATE
+  const handleUpdate = async (id, formData) => {
+    setIsSubmitting(true);
+    try {
+      await customerApi.update(id, formData);
+      await fetchCustomers();
+      return true;
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update customer.');
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // DELETE
+  const handleDelete = async (id) => {
+    setIsSubmitting(true);
+    try {
+      await customerApi.delete(id);
+      await fetchCustomers();
+      return true;
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete customer.');
+      return false;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return {
+    customers: filteredCustomers,
+    loading,
+    isSubmitting,
+    handleCreate,
+    handleUpdate,
+    handleDelete,
+    refresh: fetchCustomers,
+  };
 }
