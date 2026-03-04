@@ -41,6 +41,8 @@ const billSchema = new mongoose.Schema({
   deleted_at: { type: Date }
 }, { timestamps: true });
 
-billSchema.index({ owner_id: 1, created_at: -1 });
+// Prevents any duplicate bill numbers within a shop (belt-and-suspenders)
+billSchema.index({ owner_id: 1, createdAt: -1 });
+billSchema.index({ owner_id: 1, bill_number: 1 }, { unique: true });
 
 export default mongoose.model('Bill', billSchema);

@@ -1,6 +1,7 @@
 import Bill from '../models/Bill.js';
 import Customer from '../models/Customer.js';
 import Product from '../models/Product.js';
+import { generateBillNumber } from '../utils/generateBillNumber.js';
 
 export const createBill = async (req, res) => {
   try {
@@ -20,11 +21,13 @@ export const createBill = async (req, res) => {
     if (amount_paid >= total_amount) status = 'Paid';
     else if (amount_paid > 0) status = 'Partially Paid';
 
+    const bill_number = await generateBillNumber(owner_id);
+
     // 3. Create the Bill Snapshot
     const bill = await Bill.create({
       owner_id,
       customer_id,
-      bill_number: `INV-${Date.now()}`,
+      bill_number,
       is_estimate,
       price_mode,
       status,
