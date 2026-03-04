@@ -1,85 +1,126 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Alert } from 'react-native';
 import { analyticsApi } from '../api/analyticsApi';
 
 export function useAnalytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // Default filter is 'week' (Last 7 Days)
-  const [filterType, setFilterType] = useState('year'); 
-  
-  // Custom date range state (for the future date picker implementation)
+
+  // Default filter is 'month'
+  const [filterType, setFilterType] = useState('month');
+
+  // Custom date range state
   const [customRange, setCustomRange] = useState({ start: null, end: null });
 
-  // Helper function to calculate exact start/end ISO strings based on the filter
+  // ─── THE FIX: Each case creates independent Date objects ─────────────────
+  // Never mutate the same `now` object twice — doing so causes the `end`
+  // variable to silently hold the wrong time (Bug #7 in the audit report).
   const getDateRange = (filter) => {
-    const now = new Date();
-    const end = new Date(now.setHours(23, 59, 59, 999)).toISOString();
-    let start;
-
-    const startOfDay = new Date(now.setHours(0, 0, 0, 0));
-
     switch (filter) {
-      case 'today':
-        start = startOfDay.toISOString();
-        break;
-      case 'week':
-        // Last 7 days
-        start = new Date(startOfDay.setDate(startOfDay.getDate() - 6)).toISOString();
-        break;
-      case 'month':
-        // 1st day of the current month
-        start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-        break;
-      case 'year':
-        // 1st day of the current year
-        start = new Date(now.getFullYear(), 0, 1).toISOString();
-        break;
-      case 'custom':
+      case 'today': {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        return { start: start.toISOString(), end: end.toISOString() };
+      }
+
+      case 'week': {
+        const start = new Date();
+        start.setDate(start.getDate() - 6); // 6 days ago
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        return { start: start.toISOString(), end: end.toISOString() };
+      }
+
+      case 'month': {
+        const now = new Date();
+
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        return { start: start.toISOString(), end: end.toISOString() };
+      }
+
+      case 'year': {
+        const now = new Date();
+
+        const start = new Date(now.getFullYear(), 0, 1); // Jan 1st
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        return { start: start.toISOString(), end: end.toISOString() };
+      }
+
+      case 'custom': {
+        // These are already ISO strings set by applyCustomRange()
         return { start: customRange.start, end: customRange.end };
-      default:
-        start = new Date(startOfDay.setDate(startOfDay.getDate() - 6)).toISOString();
+      }
+
+      default: {
+        // Fallback to current month
+        const now = new Date();
+
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        start.setHours(0, 0, 0, 0);
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        return { start: start.toISOString(), end: end.toISOString() };
+      }
     }
-    return { start, end };
   };
 
   const fetchAnalytics = useCallback(async () => {
     const { start, end } = getDateRange(filterType);
-    
+
+    // Guard: custom range selected but dates not yet picked
     if (!start || !end) return;
 
     try {
       setLoading(true);
-      const res = await analyticsApi.getDashboard(start, end);
-      
+      const res = await analyticsApi.getDashboard(
+        encodeURIComponent(start), // Bug #23 fix: encode the ISO string
+        encodeURIComponent(end)
+      );
+
       if (res.success) {
-        setData(res); // Stores the summary, chartData, topProducts, and topCustomers!
+        setData(res);
       }
     } catch (error) {
-      // If it's a 403 Premium error, our apiClient interceptor will catch it, 
-      // but we log it here just in case.
-      console.log("Analytics Fetch Error:", error);
+      // 403 is expected for free users hitting the premium analytics endpoint.
+      // We silently ignore it so the screen doesn't crash.
+      if (error?.response?.status !== 403) {
+        console.error('Analytics fetch error:', error.message);
+      }
     } finally {
       setLoading(false);
     }
   }, [filterType, customRange]);
 
-
-  // NEW: Function to handle the custom date submission
+  // Apply a custom date range — called from the UI date picker
   const applyCustomRange = (startDate, endDate) => {
-    // Set the time to beginning of start day and end of end day
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
-    
+
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
     setCustomRange({ start: start.toISOString(), end: end.toISOString() });
-    setFilterType('custom');
+    setFilterType('custom'); // This triggers fetchAnalytics via the useEffect below
   };
 
-  // Refetch whenever the filter changes
+  // Re-fetch whenever the filter or custom range changes
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
@@ -89,8 +130,9 @@ export function useAnalytics() {
     loading,
     filterType,
     setFilterType,
+    customRange,
     setCustomRange,
     applyCustomRange,
-    refresh: fetchAnalytics
+    refresh: fetchAnalytics,
   };
 }
