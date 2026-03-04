@@ -29,7 +29,7 @@ export function useCustomers(searchTerm = '') {
     // Search by name or phone number
     return customers.filter(c => 
       c.name?.toLowerCase().includes(lowerSearch) || 
-      c.phone_number?.includes(searchTerm)
+      c.phone?.includes(searchTerm)
     );
   }, [customers, searchTerm]);
 

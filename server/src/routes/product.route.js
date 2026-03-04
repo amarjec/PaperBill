@@ -12,8 +12,8 @@ router.use(protect);
 
 router.post('/', checkPermission('products', 'create'), createProduct);
 router.get('/', checkPermission('products', 'read'), getAllProducts);
-router.get('/:id', checkPermission('products', 'read'), getProductById);
 router.get('/subcategory/:subcategoryId', checkPermission('products', 'read'), getProductsBySubcategory);
+router.get('/:id', checkPermission('products', 'read'), getProductById);
 router.put('/:id', checkPermission('products', 'update'), updateProduct);
 router.delete('/:id', checkPermission('products', 'delete'), softDeleteProduct);
 

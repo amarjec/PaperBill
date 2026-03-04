@@ -19,8 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.amarjec.paperbill",
-      // "usesCleartextTraffic": true
+      "package": "com.amarjec.paperbill"
     },
     "web": {
       "output": "static",

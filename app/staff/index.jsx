@@ -19,7 +19,7 @@ export default function StaffManagementScreen() {
   // Custom Checkbox Component for the Permission Grid
   const Checkbox = ({ isChecked, onPress, label }) => (
     <Pressable onPress={onPress} className="flex-row items-center mb-3 w-[48%] active:opacity-70">
-      <View className={`w-5 h-5 rounded flex-items-center justify-center border mr-2 ${isChecked ? 'bg-[#4ade80] border-[#4ade80]' : 'bg-transparent border-card'}`}>
+      <View className={`w-5 h-5 rounded flex items-center justify-center border mr-2 ${isChecked ? 'bg-[#4ade80] border-[#4ade80]' : 'bg-transparent border-card'}`}>
         {isChecked && <Feather name="check" size={14} color="#1f2617" />}
       </View>
       <Text className="text-secondaryText font-bold text-xs capitalize">{label}</Text>

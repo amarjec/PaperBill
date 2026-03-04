@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router"; 
+import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
 import { AuthProvider, useAuth } from "../src/context/AuthContext";
 import { AppProvider } from "../src/context/AppContext";
 import { View, ActivityIndicator } from "react-native";
@@ -9,31 +9,33 @@ function RootNavigation() {
   const { user, token, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const rootNavState = useRootNavigationState(); 
+  const rootNavState = useRootNavigationState();
 
   useEffect(() => {
-    if (loading || !rootNavState?.key) return; 
+    if (loading || !rootNavState?.key) return;
 
-    const isAuthRoute = segments.length === 0 || segments[0] === "index" || segments[0] === "staff-login"; 
-    const isSetupRoute = segments[0] === "shop-setup"; 
-    
-    // --- THE MAGIC FIX ---
-    // If the user object has "permissions" or role="Staff", they are an employee.
-    // Employees bypass the shop setup screen automatically.
+    const currentRoute = segments[0] ?? '';
+    const isAuthRoute  = currentRoute === '' || currentRoute === 'staff-login';
+    const isSetupRoute = currentRoute === 'shop-setup';
+
     const isStaff = user?.role === 'Staff' || user?.permissions !== undefined;
-    const hasCompletedSetup = !!user?.business_name || isStaff;
+    const hasShopProfile = !!user?.business_name || isStaff;
 
-    if (!token && !isAuthRoute) {
-      router.replace("/");
-    } 
-    else if (token) {
-      if (!hasCompletedSetup && !isSetupRoute) {
-        router.replace("/shop-setup");
-      } 
-      else if (hasCompletedSetup && (isAuthRoute || isSetupRoute)) {
-        router.replace("/(tabs)");
-      }
+    if (!token) {
+      if (!isAuthRoute) router.replace('/');
+      return;
     }
+
+    if (!hasShopProfile) {
+      if (!isSetupRoute) router.replace('/shop-setup');
+      return;
+    }
+
+    // Fully set up — redirect away from auth/setup screens
+    if (isAuthRoute || isSetupRoute) {
+      router.replace('/(tabs)');
+    }
+
   }, [token, user, loading, segments, rootNavState?.key]);
 
   if (loading) {
@@ -46,15 +48,26 @@ function RootNavigation() {
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      {/* ── Auth & Onboarding ── */}
       <Stack.Screen name="index" />
       <Stack.Screen name="staff-login" />
       <Stack.Screen name="shop-setup" />
+      <Stack.Screen name="setup-inventory" />
+
+      {/* ── Main App ── */}
       <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-      
-      <Stack.Screen name="subcategory/[id]" />
-      <Stack.Screen name="products/[id]" />
+
+      {/* ── Modal / Push Screens ── */}
+      <Stack.Screen name="subscription" />
       <Stack.Screen name="customer" />
       <Stack.Screen name="review" />
+
+      {/* ── Dynamic Routes ── */}
+      <Stack.Screen name="subcategory/[id]" />
+      <Stack.Screen name="products/[id]" />
+      <Stack.Screen name="bill/[id]" />
+      <Stack.Screen name="khata/[id]" />
+      <Stack.Screen name="staff/index" />
     </Stack>
   );
 }
