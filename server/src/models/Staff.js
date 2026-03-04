@@ -12,6 +12,7 @@ const staffSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone_number: { type: String, required: true },
   assigned_pin: { type: String, required: true }, // Set by Owner, given to Staff
+  role: { type: String, enum: ['Owner', 'Staff'], default: 'Staff' },
   
   // Security
   device_id: { type: String }, // Single-Device tracking for Staff

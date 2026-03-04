@@ -4,7 +4,7 @@ export const createProduct = async (req, res) => {
   try {
     const productData = {
       ...req.body,
-      owner_id: req.user.ownerId,
+      owner_id: req.user.role === 'Owner' ? req.user.userId : req.user.ownerId,
       created_by: req.user.name
     };
     const product = await Product.create(productData);
@@ -16,7 +16,7 @@ export const createProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({ owner_id: req.user.ownerId, is_deleted: false });
+    const products = await Product.find({ owner_id: req.user.role === 'Owner' ? req.user.userId : req.user.ownerId, is_deleted: false });
     res.status(200).json({ success: true, products });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -38,7 +38,7 @@ export const getProductsBySubcategory = async (req, res) => {
   try {
     const { subcategoryId } = req.params;
     const products = await Product.find({ 
-      owner_id: req.user.ownerId, 
+      owner_id: req.user.role === 'Owner' ? req.user.userId : req.user.ownerId,
       subcategory_id: subcategoryId, 
       is_deleted: false 
     });
@@ -51,7 +51,7 @@ export const getProductsBySubcategory = async (req, res) => {
 export const updateProduct = async (req, res) => {
   try {
     const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, owner_id: req.user.ownerId },
+      { _id: req.params.id, owner_id: req.user.role === 'Owner' ? req.user.userId : req.user.ownerId,},
       { ...req.body, updated_by: req.user.name },
       { new: true }
     );
@@ -64,7 +64,7 @@ export const updateProduct = async (req, res) => {
 export const softDeleteProduct = async (req, res) => {
   try {
     await Product.findOneAndUpdate(
-      { _id: req.params.id, owner_id: req.user.ownerId },
+      { _id: req.params.id, owner_id: req.user.role === 'Owner' ? req.user.userId : req.user.ownerId },
       { 
         is_deleted: true, 
         deleted_by: req.user.name,

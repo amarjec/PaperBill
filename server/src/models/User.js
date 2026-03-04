@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema({
   
   // NEW: Tracks if the user completed the inventory setup
   has_inventory: { type: Boolean, default: false },
+  role : { type: String, enum: ['Owner', 'Staff'], default: 'Owner' },
   
   // Security & Identity
   secure_pin: { type: String }, // Hashed 4-digit PIN for Profit View
