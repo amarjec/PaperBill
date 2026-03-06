@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import Staff from "../models/Staff.js";
 
 export const addStaff = async (req, res) => {

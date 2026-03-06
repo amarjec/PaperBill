@@ -2,14 +2,18 @@ import Bill from "../models/Bill.js";
 import Customer from "../models/Customer.js";
 import KhataTransaction from "../models/KhataTransaction.js";
 
-const getOwnerId = (user) => (user.role === "Owner" ? user.userId : user.ownerId);
+const getOwnerId = (user) =>
+  user.role === "Owner" ? user.userId : user.ownerId;
 
 export const createCustomer = async (req, res) => {
   try {
     const { body, user } = req;
     const { name, phone, address } = body;
 
-    if (!name) return res.status(400).json({ success: false, message: "Customer name is required." });
+    if (!name)
+      return res
+        .status(400)
+        .json({ success: false, message: "Customer name is required." });
 
     const customer = await Customer.create({
       name,
@@ -26,7 +30,10 @@ export const createCustomer = async (req, res) => {
 
 export const getAllCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find({ owner_id: getOwnerId(req.user), is_deleted: false });
+    const customers = await Customer.find({
+      owner_id: getOwnerId(req.user),
+      is_deleted: false,
+    });
     res.status(200).json({ success: true, customers });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -36,9 +43,16 @@ export const getAllCustomers = async (req, res) => {
 export const getCustomerById = async (req, res) => {
   try {
     const { params, user } = req;
-    const customer = await Customer.findOne({ _id: params.id, owner_id: getOwnerId(user), is_deleted: false });
+    const customer = await Customer.findOne({
+      _id: params.id,
+      owner_id: getOwnerId(user),
+      is_deleted: false,
+    });
 
-    if (!customer) return res.status(404).json({ success: false, message: "Customer not found." });
+    if (!customer)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found." });
     res.status(200).json({ success: true, customer });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -50,13 +64,21 @@ export const updateCustomer = async (req, res) => {
     const { body, params, user } = req;
     const { name, phone, address } = body;
 
+    if (!name)
+      return res
+        .status(400)
+        .json({ success: false, message: "Customer name is required." });
+
     const customer = await Customer.findOneAndUpdate(
       { _id: params.id, owner_id: getOwnerId(user), is_deleted: false },
       { name, phone, address, updated_by: user.name },
-      { new: true },
+      { new: true, runValidators: true },
     );
 
-    if (!customer) return res.status(404).json({ success: false, message: "Customer not found." });
+    if (!customer)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found." });
     res.status(200).json({ success: true, customer });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -71,19 +93,35 @@ export const updateKhataPayment = async (req, res) => {
     const owner_id = getOwnerId(user);
 
     if (!amount || Number(amount) <= 0) {
-      return res.status(400).json({ success: false, message: "Invalid payment amount." });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid payment amount." });
     }
 
-    const customer = await Customer.findOne({ _id: customerId, owner_id, is_deleted: false });
-    if (!customer) return res.status(404).json({ success: false, message: "Customer not found." });
+    const customer = await Customer.findOne({
+      _id: customerId,
+      owner_id,
+      is_deleted: false,
+    });
+    if (!customer)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found." });
 
     const appliedAmount = Math.min(Number(amount), customer.total_debt);
 
-    // FIX: Atomic operation prevents race conditions
+    if (appliedAmount <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Customer has no outstanding debt." });
+    }
+
+    // Atomic debt deduction
     await Customer.findByIdAndUpdate(customerId, {
-      $inc: { total_debt: -appliedAmount }
+      $inc: { total_debt: -appliedAmount },
     });
 
+    // Record the transaction
     await KhataTransaction.create({
       owner_id,
       customer_id: customerId,
@@ -92,8 +130,11 @@ export const updateKhataPayment = async (req, res) => {
       received_by: user.name,
     });
 
-    // Cascade across unpaid bills oldest-first.
-    let remaining = Number(amount);
+    // FIX: Cascade uses `appliedAmount` (capped), NOT the raw `amount`.
+    // Previously the cascade used the uncapped value which could mark more bills as
+    // paid than the debt reduction accounted for, corrupting the ledger.
+    let remaining = appliedAmount;
+
     const unpaidBills = await Bill.find({
       customer_id: customerId,
       owner_id,
@@ -118,7 +159,9 @@ export const updateKhataPayment = async (req, res) => {
       await bill.save();
     }
 
-    res.status(200).json({ success: true, message: "Payment successfully recorded." });
+    res
+      .status(200)
+      .json({ success: true, message: "Payment successfully recorded." });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -130,17 +173,43 @@ export const getKhataByCustomerId = async (req, res) => {
     const owner_id = getOwnerId(user);
     const customerId = params.id;
 
-    const customer = await Customer.findOne({ _id: customerId, owner_id, is_deleted: false });
-    if (!customer) return res.status(404).json({ success: false, message: "Customer not found." });
+    const customer = await Customer.findOne({
+      _id: customerId,
+      owner_id,
+      is_deleted: false,
+    });
+    if (!customer)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found." });
 
-    const [unpaidBills, allBills] = await Promise.all([
+    const [unpaidBills, allBills, transactions] = await Promise.all([
       Bill.find({
-        customer_id: customerId, owner_id, is_deleted: false, is_estimate: false, status: { $in: ["Unpaid", "Partial"] },
+        customer_id: customerId,
+        owner_id,
+        is_deleted: false,
+        is_estimate: false,
+        status: { $in: ["Unpaid", "Partial"] },
       }).sort({ createdAt: 1 }),
-      Bill.find({ customer_id: customerId, owner_id, is_deleted: false, is_estimate: false }).sort({ createdAt: -1 }),
+      Bill.find({
+        customer_id: customerId,
+        owner_id,
+        is_deleted: false,
+        is_estimate: false,
+      }).sort({ createdAt: -1 }),
+      // also return transaction history so the caller can show the full payment ledger
+      KhataTransaction.find({ customer_id: customerId, owner_id }).sort({
+        createdAt: -1,
+      }),
     ]);
 
-    res.status(200).json({ success: true, customer, khata: { unpaidBills, allBills } });
+    res
+      .status(200)
+      .json({
+        success: true,
+        customer,
+        khata: { unpaidBills, allBills, transactions },
+      });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -154,8 +223,13 @@ export const softDeleteCustomer = async (req, res) => {
       { is_deleted: true, deleted_by: user.name, deleted_at: new Date() },
     );
 
-    if (!customer) return res.status(404).json({ success: false, message: "Customer not found." });
-    res.status(200).json({ success: true, message: "Customer deleted successfully." });
+    if (!customer)
+      return res
+        .status(404)
+        .json({ success: false, message: "Customer not found." });
+    res
+      .status(200)
+      .json({ success: true, message: "Customer deleted successfully." });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
