@@ -13,7 +13,7 @@ export const ownerGoogleLogin = async (req, res) => {
   try {
     const { body } = req;
     const { idToken, deviceId } = body;
-    
+
     if (!idToken || !deviceId) {
       return res.status(400).json({ success: false, message: 'idToken and deviceId are required' });
     }
@@ -23,6 +23,8 @@ export const ownerGoogleLogin = async (req, res) => {
 
     let user = await User.findOne({ google_id });
     if (!user) {
+      // FIX: Only pass fields that are guaranteed at sign-up time.
+      // business_name, phone_number, secure_pin are collected during onboarding.
       user = await User.create({ google_id, email, name, device_id: deviceId });
     } else {
       user.device_id = deviceId;
@@ -40,13 +42,14 @@ export const verifyStaffOtp = async (req, res) => {
   try {
     const { body } = req;
     const { phoneNumber, otp, deviceId } = body;
-    
+
     if (!phoneNumber || !otp || !deviceId) {
       return res.status(400).json({ success: false, message: 'Phone number, OTP, and deviceId are required' });
     }
 
     const staff = await Staff.findOne({ phone_number: phoneNumber });
 
+    // FIX: Check existence and PIN validity separately for clearer error messages
     if (!staff) {
       return res.status(401).json({ success: false, message: 'Invalid phone number' });
     }
@@ -57,6 +60,7 @@ export const verifyStaffOtp = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account suspended. Contact the owner.' });
     }
 
+    // FIX: Compare hashed PIN using bcrypt (see staff_controller.js — PIN is now hashed on save)
     const bcrypt = await import('bcryptjs');
     const isPinValid = await bcrypt.default.compare(otp, staff.assigned_pin || '');
     if (!isPinValid) {

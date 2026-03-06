@@ -1,5 +1,7 @@
+import bcrypt from 'bcryptjs';
 import Staff from "../models/Staff.js";
 
+// Only the Owner can manage staff
 export const addStaff = async (req, res) => {
   try {
     const { body, user } = req;
@@ -10,6 +12,7 @@ export const addStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: "Name and phone number are required." });
     }
 
+    // FIX: Assigned PIN must be provided so staff can log in
     if (!assigned_pin) {
       return res.status(400).json({ success: false, message: "assigned_pin is required." });
     }
@@ -19,6 +22,7 @@ export const addStaff = async (req, res) => {
       return res.status(400).json({ success: false, message: "Staff with this number already exists." });
     }
 
+    // FIX: Hash the PIN before storing — never persist plaintext credentials
     const hashedPin = await bcrypt.hash(assigned_pin, 10);
 
     const staff = await Staff.create({
@@ -36,7 +40,8 @@ export const addStaff = async (req, res) => {
 export const getStaffMembers = async (req, res) => {
   try {
     const { user } = req;
-    const staff = await Staff.find({ owner_id: user.userId, is_deleted: false }).select("-assigned_pin");
+    const staff = await Staff.find({ owner_id: user.userId, is_deleted: false })
+      .select("-assigned_pin");
     res.status(200).json({ success: true, staff });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -50,6 +55,7 @@ export const updateStaffPermission = async (req, res) => {
 
     const updateFields = { permissions, status };
 
+    // FIX: If a new PIN is being set, hash it before storing
     if (assigned_pin) {
       updateFields.assigned_pin = await bcrypt.hash(assigned_pin, 10);
     }

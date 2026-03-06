@@ -1,19 +1,16 @@
-// Example usage in route: checkPermission('bills', 'create')
 export const checkPermission = (moduleName, action) => {
   return (req, res, next) => {
+    const { user } = req;
+
     // Owners can do everything
-    if (req.user.role === 'Owner') {
+    if (user.role === 'Owner') {
       return next();
     }
 
-    // For Staff, check their specific permission matrix
-    const staffPermissions = req.user.permissions;
+    // For Staff, check their specific permission matrix using optional chaining
+    const { permissions } = user;
     
-    if (
-      !staffPermissions || 
-      !staffPermissions[moduleName] || 
-      staffPermissions[moduleName][action] !== true
-    ) {
+    if (!permissions?.[moduleName]?.[action]) {
       return res.status(403).json({ 
         success: false, 
         message: `Access Denied: You do not have permission to ${action} ${moduleName}.` 
@@ -24,17 +21,18 @@ export const checkPermission = (moduleName, action) => {
   };
 };
 
-// Middleware to restrict routes to ONLY the Owner (e.g., viewing profit, deleting staff)
 export const ownerOnly = (req, res, next) => {
-  if (req.user.role !== 'Owner') {
+  const { user } = req;
+  if (user.role !== 'Owner') {
     return res.status(403).json({ success: false, message: 'Owner access strictly required.' });
   }
   next();
 };
 
 export const premiumOnly = (req, res, next) => {
-  // We check the isPremium flag that was attached by auth.middleware.js
-  if (!req.user || req.user.isPremium !== true) {
+  const { user } = req;
+  
+  if (!user?.isPremium) {
     return res.status(403).json({ 
       success: false, 
       message: 'LOCKED: This API requires an active Premium subscription.',

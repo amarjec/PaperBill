@@ -4,9 +4,11 @@ import Staff from '../models/Staff.js';
 
 export const protect = async (req, res, next) => {
   try {
+    const { authorization } = req.headers;
     let token;
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
+
+    if (authorization?.startsWith('Bearer ')) {
+      token = authorization.split(' ')[1];
     }
 
     if (!token) {
@@ -15,20 +17,27 @@ export const protect = async (req, res, next) => {
 
     // 1. Verify Token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { userId, role, deviceId } = decoded;
     
-    // 2. Fetch User or Staff to check Device ID
+    // 2. Fetch User or Staff to check Device ID & Status
     let currentUser;
-    let ownerPremiumStatus = false; // Added to track actual premium status
+    let ownerPremiumStatus = false;
 
-    if (decoded.role === 'Owner') {
-      currentUser = await User.findById(decoded.userId).select('-secure_pin');
+    if (role === 'Owner') {
+      // Optimize: Only fetch necessary fields
+      currentUser = await User.findById(userId).select('name device_id isPremium permissions');
       if (currentUser) ownerPremiumStatus = currentUser.isPremium;
-    } else if (decoded.role === 'Staff') {
-      currentUser = await Staff.findById(decoded.userId);
-      // Fetch the owner to get their actual subscription status
+    } else if (role === 'Staff') {
+      currentUser = await Staff.findById(userId).select('name device_id permissions owner_id status is_deleted');
+      
       if (currentUser) {
+        // FIX: Critical Security Check - Block suspended or deleted staff immediately
+        if (currentUser.status === 'Suspended' || currentUser.is_deleted) {
+          return res.status(403).json({ success: false, message: 'Account suspended or deleted. Contact the owner.' });
+        }
+
         const owner = await User.findById(currentUser.owner_id).select('isPremium');
-        ownerPremiumStatus = owner ? owner.isPremium : false;
+        ownerPremiumStatus = owner?.isPremium || false;
       }
     }
 
@@ -37,7 +46,7 @@ export const protect = async (req, res, next) => {
     }
 
     // 3. The Single-Device Policy Check
-    if (currentUser.device_id !== decoded.deviceId) {
+    if (currentUser.device_id !== deviceId) {
       return res.status(401).json({ 
         success: false, 
         message: 'LOGOUT_REQUIRED', 
@@ -45,18 +54,21 @@ export const protect = async (req, res, next) => {
       });
     }
 
-    // 4. Attach user info to the request object for the controllers to use
+    // 4. Attach user info to the request object
     req.user = {
       userId: currentUser._id,
-      ownerId: decoded.role === 'Owner' ? currentUser._id : currentUser.owner_id,
-      role: decoded.role,
+      ownerId: role === 'Owner' ? currentUser._id : currentUser.owner_id,
+      role,
       name: currentUser.name,
       permissions: currentUser.permissions || null,
-      isPremium: ownerPremiumStatus // Now accurately reflects the shop's subscription!
+      isPremium: ownerPremiumStatus
     };
 
     next();
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, message: 'Token expired, please log in again.' });
+    }
     res.status(401).json({ success: false, message: 'Not authorized, token failed' });
   }
 };

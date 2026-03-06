@@ -1,20 +1,13 @@
-import mongoose from 'mongoose';
+import { Schema, model, Types } from 'mongoose';
 
-const customerSchema = new mongoose.Schema({
-  owner_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  name: { type: String, required: true },
-  phone: { type: String },
-  address: { type: String },
+const customerSchema = new Schema({
+  owner_id: { type: Types.ObjectId, ref: 'User', required: true, index: true },
+  name: { type: String, required: true, trim: true },
+  phone: { type: String, trim: true },
+  address: { type: String, trim: true },
   
   // Khata (Credit Ledger)
   total_debt: { type: Number, default: 0 }, 
-  
-  // NEW: Log of individual payments received
-  khata_transactions: [{
-    amount: { type: Number, required: true },
-    date: { type: Date, default: Date.now },
-    received_by: { type: String } // To track which staff member collected the cash
-  }],
   
   // Audit Trail
   created_by: { type: String, required: true }, 
@@ -24,4 +17,13 @@ const customerSchema = new mongoose.Schema({
   deleted_at: { type: Date }
 }, { timestamps: true });
 
-export default mongoose.model('Customer', customerSchema);
+// Prevent duplicate phone numbers for the same shop owner, ignoring empty/null phones
+customerSchema.index(
+  { owner_id: 1, phone: 1 }, 
+  { unique: true, partialFilterExpression: { phone: { $type: "string", $ne: "" } } }
+);
+
+// Optimize common soft-delete queries
+customerSchema.index({ owner_id: 1, is_deleted: 1 });
+
+export default model('Customer', customerSchema);
