@@ -25,13 +25,19 @@ const Field = ({ label, ...props }) => (
 
 export default function CustomerScreen() {
   const router = useRouter();
-  const { setSelectedCustomer } = useApp();
+  const { setSelectedCustomer, list } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
 
   const {
     customers, loading, isSubmitting,
     handleCreate, handleUpdate, handleDelete,
   } = useCustomers(searchTerm);
+
+  // ── Determine which "mode" we're in ──────────────────────────────────────
+  // If the cart has items the user arrived here mid-billing flow → go to review.
+  // If the cart is empty the user arrived from the profile/settings page → go to khata.
+  const cartItems   = Object.values(list);
+  const isBillingMode = cartItems.length > 0;
 
   // Long-press action modal
   const [selected, setSelected]           = useState(null);
@@ -83,15 +89,28 @@ export default function CustomerScreen() {
       const newCustomer = await handleCreate(formData);
       if (newCustomer) {
         setFormVisible(false);
-        setSelectedCustomer(newCustomer);
-        router.push('/review');
+        if (isBillingMode) {
+          // Created a new customer while billing → go straight to review
+          setSelectedCustomer(newCustomer);
+          router.push('/review');
+        } else {
+          // Created a new customer from profile → open their (empty) khata
+          router.push(`/khata/${newCustomer._id}`);
+        }
       }
     }
   };
 
-  const proceedToReview = (customer) => {
-    setSelectedCustomer(customer);
-    router.push('/review');
+  // ── Main tap handler — behaviour depends on mode ─────────────────────────
+  const handleCustomerPress = (customer) => {
+    if (isBillingMode) {
+      // Billing flow: attach customer and go to review
+      setSelectedCustomer(customer);
+      router.push('/review');
+    } else {
+      // Profile/ledger flow: open the customer's khata
+      router.push(`/khata/${customer._id}`);
+    }
   };
 
   return (
@@ -104,9 +123,11 @@ export default function CustomerScreen() {
         </TouchableOpacity>
 
         <View className="flex-1">
-          <Text className="text-primaryText text-2xl font-black ">Customers</Text>
+          <Text className="text-primaryText text-2xl font-black">Customers</Text>
           <Text className="text-secondaryText font-medium text-xs">
-            Tap to bill  •  Hold to manage
+            {isBillingMode
+              ? 'Tap to bill  •  Hold to manage'
+              : 'Tap to view ledger  •  Hold to manage'}
           </Text>
         </View>
 
@@ -154,10 +175,10 @@ export default function CustomerScreen() {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 48 }}
         >
-          {/* Walk-in shortcut */}
-          {!searchTerm && (
+          {/* Walk-in shortcut — only relevant during billing, hide in ledger mode */}
+          {isBillingMode && !searchTerm && (
             <TouchableOpacity
-              onPress={() => proceedToReview(null)}
+              onPress={() => handleCustomerPress(null)}
               activeOpacity={0.88}
               className="bg-primaryText rounded-[26px] px-5 py-5 mb-5 flex-row items-center justify-between"
               style={{ shadowColor: '#1f2617', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}
@@ -199,7 +220,7 @@ export default function CustomerScreen() {
               <CustomerCard
                 key={c._id}
                 customer={c}
-                onPress={() => proceedToReview(c)}
+                onPress={() => handleCustomerPress(c)}
                 onLongPress={() => { setSelected(c); setActionVisible(true); }}
               />
             ))
@@ -232,6 +253,27 @@ export default function CustomerScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* View Khata — only shown in ledger mode since billing mode tapping already goes to review */}
+            {!isBillingMode && (
+              <TouchableOpacity
+                onPress={() => {
+                  setActionVisible(false);
+                  router.push(`/khata/${selected._id}`);
+                }}
+                className="bg-white border border-card rounded-2xl px-5 py-4 flex-row items-center mb-3"
+                style={{ elevation: 1 }}
+              >
+                <View className="bg-card w-9 h-9 rounded-xl items-center justify-center mr-4">
+                  <MaterialCommunityIcons name="book-open-outline" size={17} color="#1f2617" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-primaryText font-black text-[15px]">View Khata</Text>
+                  <Text className="text-secondaryText text-[10px] font-bold mt-0.5">Open ledger & payment history</Text>
+                </View>
+                <Feather name="chevron-right" size={16} color="#bfb5a8" />
+              </TouchableOpacity>
+            )}
 
             {/* Edit */}
             <TouchableOpacity
@@ -283,7 +325,11 @@ export default function CustomerScreen() {
                   {editingId ? 'Edit Customer' : 'New Customer'}
                 </Text>
                 <Text className="text-secondaryText text-xs font-bold mt-1">
-                  {editingId ? 'Update their details below' : 'Saved and billed immediately'}
+                  {editingId
+                    ? 'Update their details below'
+                    : isBillingMode
+                      ? 'Saved and billed immediately'
+                      : 'Saved — you can view their Khata next'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -320,10 +366,15 @@ export default function CustomerScreen() {
                     <Feather name="check-circle" size={19} color="#e5fc01" />
                     <Text className="text-accent font-black text-[15px] ml-2 uppercase tracking-widest">Save Changes</Text>
                   </>
-                ) : (
+                ) : isBillingMode ? (
                   <>
                     <Text className="text-primaryText font-black text-[15px] mr-2 uppercase tracking-widest">Save & Proceed</Text>
                     <Feather name="arrow-right-circle" size={19} color="#1f2617" />
+                  </>
+                ) : (
+                  <>
+                    <Text className="text-primaryText font-black text-[15px] mr-2 uppercase tracking-widest">Save & View Khata</Text>
+                    <MaterialCommunityIcons name="book-open-outline" size={19} color="#1f2617" />
                   </>
                 )}
               </TouchableOpacity>
