@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useStaff } from '@/src/hooks/useStaff';
+import PremiumLock from '@/src/components/PremiumLock';
 
-export default function StaffManagementScreen() {
+function StaffManagementScreen() {
   const router = useRouter();
   const {
     staffList, loading, isProcessing,
@@ -151,5 +152,17 @@ export default function StaffManagementScreen() {
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+export default function StaffScreen() {
+  return (
+    <PremiumLock
+      featureName="Staff Management"
+      description="Add staff members, assign granular permissions, and let your team handle billing — while you stay in full control."
+      icon="account-group"
+    >
+      <StaffManagementScreen />
+    </PremiumLock>
   );
 }

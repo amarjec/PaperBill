@@ -2,6 +2,7 @@ import { useKhataDetail } from "@/src/hooks/useKhataDetail";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useRef } from "react";
+import PremiumLock from "@/src/components/PremiumLock";
 import {
   ActivityIndicator,
   Animated,
@@ -286,7 +287,7 @@ function PassbookSection({ allBills, transactions, safeNum }) {
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
-export default function KhataDetailScreen() {
+function KhataDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const [showAllInvoices, setShowAllInvoices] = useState(false);
@@ -756,5 +757,17 @@ export default function KhataDetailScreen() {
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+export default function KhataDetailRoute() {
+  return (
+    <PremiumLock
+      featureName="Khata & Ledger"
+      description="Track customer credit, view full payment history, and manage outstanding dues — all in one place."
+      icon="book-open-variant"
+    >
+      <KhataDetailScreen />
+    </PremiumLock>
   );
 }
