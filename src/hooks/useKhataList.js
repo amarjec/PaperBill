@@ -2,13 +2,21 @@ import { useState, useMemo, useCallback } from 'react';
 import { Alert } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { customerApi } from '../api/customerApi';
+import { usePermission } from './usePermission'; 
 
 export function useKhataList() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const { can } = usePermission();
+
   const fetchCustomers = async () => {
+    if (!can('khata', 'read')) {
+      setCustomers([]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const data = await customerApi.getAll();

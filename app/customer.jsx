@@ -148,6 +148,7 @@ export default function CustomerScreen() {
       </View>
 
       {/* ── Search ─────────────────────────────────────────────────────────── */}
+      {can('customers', 'read') && (
       <View className="px-6 mb-4 mt-2">
         <View
           className="bg-white flex-row items-center px-4 py-3 rounded-2xl border border-card"
@@ -167,7 +168,7 @@ export default function CustomerScreen() {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </View>)}
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
       {loading ? (

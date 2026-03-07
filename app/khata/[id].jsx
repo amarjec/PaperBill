@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { usePermission } from "@/src/hooks/usePermission";
 
 if (
   Platform.OS === "android" &&
@@ -292,6 +293,8 @@ function KhataDetailScreen() {
   const router = useRouter();
   const [showAllInvoices, setShowAllInvoices] = useState(false);
   const [showPendingInvoices, setShowPendingInvoices] = useState(true);
+
+  const { can } = usePermission();
 
   const {
     customer,
@@ -646,6 +649,7 @@ function KhataDetailScreen() {
       </ScrollView>
 
       {/* ── Sticky CTA ── */}
+       {can ('khata', 'update') &&
       <View className="absolute bottom-0 left-0 right-0 bg-bg px-6 pt-4 pb-8 border-t border-stone-200">
         <Pressable
           disabled={totalDebt <= 0}
@@ -678,9 +682,10 @@ function KhataDetailScreen() {
             {totalDebt > 0 ? "Settle Balance" : "All Cleared"}
           </Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* ── Payment Modal ── */}
+      {can ('khata', 'update') &&
       <Modal visible={paymentModalVisible} transparent animationType="slide">
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -755,7 +760,7 @@ function KhataDetailScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
+      </Modal>}
     </SafeAreaView>
   );
 }

@@ -1,13 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Alert } from 'react-native';
 import { customerApi } from '../api/customerApi';
+import { usePermission } from './usePermission';
 
 export function useCustomers(searchTerm = '') {
   const [customers, setCustomers]   = useState([]);
   const [loading, setLoading]       = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { can } = usePermission();
+
   const fetchCustomers = async () => {
+    if (!can('customers', 'read')) {
+      setCustomers([]);
+      setLoading(false);
+      return; 
+    }
     try {
       setLoading(true);
       const data = await customerApi.getAll();

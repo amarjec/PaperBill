@@ -4,13 +4,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useBillDetail } from '@/src/hooks/useBillDetail';
-import { useAuth } from '../../src/context/AuthContext';
-import { billService } from '../../src/services/billService';
+import { useAuth } from '@/src/context/AuthContext';
+import { billService } from '@/src/services/billService';
+import { usePermission } from '@/src/hooks/usePermission';
 
 export default function BillDetailScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { user } = useAuth(); // Get shop details from context
+
+  const{ can } = usePermission();
 
 const handleShare = async () => {
   try {
@@ -258,6 +261,7 @@ const handleShare = async () => {
       </ScrollView>
 
       {/* Sticky Bottom Actions */}
+      {can ('khata', 'update') && 
       <View className="absolute bottom-0 left-0 right-0 bg-bg px-6 pt-4 pb-8 border-t border-card/50">
         <Pressable 
           disabled={pendingAmount <= 0}
@@ -269,7 +273,7 @@ const handleShare = async () => {
             {pendingAmount > 0 ? 'Add Payment' : 'Fully Paid'}
           </Text>
         </Pressable>
-      </View>
+      </View>}
 
       {/* Modals for PIN, Payment, and Profit View remain exactly the same as previously defined to keep functionality intact */}
       <Modal visible={paymentModalVisible} transparent animationType="fade">
