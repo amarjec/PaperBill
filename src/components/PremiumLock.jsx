@@ -5,23 +5,33 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 
-export default function PremiumLock({ children, featureName, description, icon = "lock" }) {
+// 1. Added onClose to the props destructing
+export default function PremiumLock({ children, featureName, description, icon = "lock", onClose }) {
   const router = useRouter();
   const { user } = useAuth();
 
   // If the user is an Owner with Premium, or a Staff member (whose owner is premium), let them in!
-  // Note: Your backend auth middleware should also enforce this for API calls
   const isPremium = user?.isPremium || user?.subscription?.status === 'active';
 
   if (isPremium) {
     return <>{children}</>;
   }
 
+  // 2. Created a safe back handler
+  const handleBack = () => {
+    if (onClose) {
+      onClose(); // Just close the modal if provided
+    } else {
+      router.back(); // Otherwise, pop the screen
+    }
+  };
+
   // --- FREE USER LOCK SCREEN ---
   return (
     <SafeAreaView className="flex-1 bg-bg justify-center">
       <View className="px-6 py-4 flex-row items-center absolute top-10 left-0 z-10 w-full">
-        <Pressable onPress={() => router.back()} className="bg-card p-3 rounded-2xl active:opacity-50">
+        {/* 3. Replaced router.back() with handleBack */}
+        <Pressable onPress={handleBack} className="bg-card p-3 rounded-2xl active:opacity-50">
           <Feather name="arrow-left" size={20} color="#1f2617" />
         </Pressable>
       </View>
@@ -65,14 +75,18 @@ export default function PremiumLock({ children, featureName, description, icon =
         </View>
 
         <Pressable 
-          onPress={() => router.push('/subscription')}
+          onPress={() => {
+            if (onClose) onClose(); // Optionally dismiss the modal before navigating
+            router.push('/subscription');
+          }}
           className="bg-primaryText py-5 rounded-3xl items-center shadow-2xl active:opacity-70 flex-row justify-center mb-4 border border-primaryText"
         >
           <MaterialCommunityIcons name="crown" size={20} color="#e5fc01" />
           <Text className="text-accent font-black uppercase tracking-widest ml-2 text-sm">Upgrade to Premium</Text>
         </Pressable>
         
-        <Pressable onPress={() => router.back()} className="py-4 items-center">
+        {/* 4. Replaced router.back() with handleBack */}
+        <Pressable onPress={handleBack} className="py-4 items-center">
           <Text className="text-secondaryText font-bold uppercase tracking-widest text-[10px]">Maybe Later</Text>
         </Pressable>
       </ScrollView>

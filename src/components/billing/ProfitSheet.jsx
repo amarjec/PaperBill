@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, Pressable, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import PremiumLock from '@/src/components/PremiumLock'; // <-- 1. Added Import
 
 // ── Single item profit row ────────────────────────────────────────────────────
 const ProfitRow = ({ item, priceMode, safeNum }) => {
@@ -63,84 +64,92 @@ export const ProfitSheet = ({ visible, onClose, cartItems, totals, priceMode, sa
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView className="flex-1 bg-bg">
+      {/* 2. Wrapped the internal UI with PremiumLock */}
+      <PremiumLock
+        featureName="Profit Analysis"
+        description="See exact margins, track cost vs revenue, and instantly know your true profit per bill."
+        icon="chart-line"
+        onClose={onClose}
+      >
+        <SafeAreaView className="flex-1 bg-bg">
 
-        {/* Header */}
-        <View className="px-6 pt-4 pb-3 flex-row items-center justify-between border-b border-card/50">
-          <View>
-            <Text className="text-primaryText text-xl font-black tracking-tight">Profit Analysis</Text>
-            <Text className="text-secondaryText text-[10px] font-black uppercase tracking-widest mt-0.5">
-              {cartItems.length} items  •  {priceMode} price
+          {/* Header */}
+          <View className="px-6 pt-4 pb-3 flex-row items-center justify-between border-b border-card/50">
+            <View>
+              <Text className="text-primaryText text-xl font-black tracking-tight">Profit Analysis</Text>
+              <Text className="text-secondaryText text-[10px] font-black uppercase tracking-widest mt-0.5">
+                {cartItems.length} items  •  {priceMode} price
+              </Text>
+            </View>
+            <Pressable
+              onPress={onClose}
+              className="bg-card w-9 h-9 rounded-full items-center justify-center active:opacity-60"
+            >
+              <Feather name="x" size={17} color="#1f2617" />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
+          >
+            {/* Summary card */}
+            <View
+              className="bg-primaryText rounded-[28px] p-5 mb-6"
+              style={{ shadowColor: '#1f2617', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}
+            >
+              {/* Top — big profit number */}
+              <View className="flex-row items-start justify-between mb-4">
+                <View>
+                  <Text className="text-secondary text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">
+                    Estimated Profit
+                  </Text>
+                  <Text className={`font-black text-4xl ${isProfitGood ? 'text-[#4ade80]' : 'text-red-400'}`}>
+                    {isProfitGood ? '+' : ''}₹{totals.profit}
+                  </Text>
+                </View>
+                <View className={`px-3 py-1.5 rounded-xl mt-1 ${isProfitGood ? 'bg-green-400/20 border border-green-400/30' : 'bg-red-400/20 border border-red-400/30'}`}>
+                  <Text className={`font-black text-sm ${isProfitGood ? 'text-green-400' : 'text-red-400'}`}>
+                    {marginPct}%
+                  </Text>
+                </View>
+              </View>
+
+              {/* Bottom row — cost vs revenue */}
+              <View className="flex-row border-t border-white/10 pt-4">
+                <View className="flex-1">
+                  <Text className="text-secondary text-[9px] font-black uppercase tracking-widest opacity-50">
+                    Total Cost
+                  </Text>
+                  <Text className="text-secondary font-black text-base mt-1">₹{totalCost}</Text>
+                </View>
+                <View className="w-px bg-white/10 mx-4" />
+                <View className="flex-1 items-end">
+                  <Text className="text-secondary text-[9px] font-black uppercase tracking-widest opacity-50">
+                    Revenue
+                  </Text>
+                  <Text className="text-accent font-black text-base mt-1">₹{totals.finalTotal}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Section label */}
+            <Text className="text-secondaryText text-[10px] font-black uppercase tracking-widest mb-3 mx-1">
+              Item Breakdown
             </Text>
-          </View>
-          <Pressable
-            onPress={onClose}
-            className="bg-card w-9 h-9 rounded-full items-center justify-center active:opacity-60"
-          >
-            <Feather name="x" size={17} color="#1f2617" />
-          </Pressable>
-        </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
-        >
-          {/* Summary card */}
-          <View
-            className="bg-primaryText rounded-[28px] p-5 mb-6"
-            style={{ shadowColor: '#1f2617', shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}
-          >
-            {/* Top — big profit number */}
-            <View className="flex-row items-start justify-between mb-4">
-              <View>
-                <Text className="text-secondary text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">
-                  Estimated Profit
-                </Text>
-                <Text className={`font-black text-4xl ${isProfitGood ? 'text-[#4ade80]' : 'text-red-400'}`}>
-                  {isProfitGood ? '+' : ''}₹{totals.profit}
-                </Text>
-              </View>
-              <View className={`px-3 py-1.5 rounded-xl mt-1 ${isProfitGood ? 'bg-green-400/20 border border-green-400/30' : 'bg-red-400/20 border border-red-400/30'}`}>
-                <Text className={`font-black text-sm ${isProfitGood ? 'text-green-400' : 'text-red-400'}`}>
-                  {marginPct}%
-                </Text>
-              </View>
-            </View>
-
-            {/* Bottom row — cost vs revenue */}
-            <View className="flex-row border-t border-white/10 pt-4">
-              <View className="flex-1">
-                <Text className="text-secondary text-[9px] font-black uppercase tracking-widest opacity-50">
-                  Total Cost
-                </Text>
-                <Text className="text-secondary font-black text-base mt-1">₹{totalCost}</Text>
-              </View>
-              <View className="w-px bg-white/10 mx-4" />
-              <View className="flex-1 items-end">
-                <Text className="text-secondary text-[9px] font-black uppercase tracking-widest opacity-50">
-                  Revenue
-                </Text>
-                <Text className="text-accent font-black text-base mt-1">₹{totals.finalTotal}</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Section label */}
-          <Text className="text-secondaryText text-[10px] font-black uppercase tracking-widest mb-3 mx-1">
-            Item Breakdown
-          </Text>
-
-          {/* Item rows */}
-          {cartItems.map((item, idx) => (
-            <ProfitRow
-              key={item._id || idx}
-              item={item}
-              priceMode={priceMode}
-              safeNum={safeNum}
-            />
-          ))}
-        </ScrollView>
-      </SafeAreaView>
+            {/* Item rows */}
+            {cartItems.map((item, idx) => (
+              <ProfitRow
+                key={item._id || idx}
+                item={item}
+                priceMode={priceMode}
+                safeNum={safeNum}
+              />
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </PremiumLock>
     </Modal>
   );
 };
