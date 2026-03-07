@@ -24,6 +24,8 @@ export default function ProductScreen() {
   const { setList } = useApp();
   const { can } = usePermission();
 
+  const canCreateBill = can('bills', 'create');
+
   const pageCartItems = Object.values(cart).filter(item =>
     subId === 'all' ? true : String(item.subcategory_id) === String(subId)
   );
@@ -151,7 +153,7 @@ export default function ProductScreen() {
         </View>
 
         {/* Clear page button */}
-        {pageQty > 0 && (
+        {pageQty > 0 && canCreateBill && (
           <TouchableOpacity
             onPress={handleClearPage}
             activeOpacity={0.7}
@@ -216,6 +218,7 @@ export default function ProductScreen() {
                 key={p._id}
                 product={p}
                 quantity={cart[p._id]?.qty || 0}
+                canAddToCart={canCreateBill}
                 onAdd={()    => updateQuantity(p,  1)}
                 onRemove={()  => updateQuantity(p, -1)}
                 onQuantityChange={(qty) => setQuantity(p, qty)}
@@ -227,7 +230,7 @@ export default function ProductScreen() {
       )}
 
       {/* ── "Done Adding" sticky bar ─────────────────────────────────────── */}
-      {pageQty > 0 && (
+      {pageQty > 0 && canCreateBill && (
         <View className="absolute bottom-6 left-4 right-4 z-50">
           <TouchableOpacity
             onPress={() => router.back()}

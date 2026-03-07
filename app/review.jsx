@@ -9,6 +9,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useReview } from '@/src/hooks/useReview';
 import { ProfitSheet } from '@/src/components/billing/ProfitSheet';
+import { usePermission } from '../src/hooks/usePermission';
 
 // ─── Cart item row ────────────────────────────────────────────────────────────
 // Tap → slide-left to reveal delete strip (clipped so red never shows in normal view)
@@ -176,6 +177,8 @@ export default function ReviewScreen() {
     pinInput, setPinInput, isVerifyingPin, handleVerifyPin,
     generateBill,
   } = useReview();
+
+  const {can} = usePermission();
 
   const [showAdjustments, setShowAdjustments] = useState(false);
 
@@ -380,6 +383,7 @@ export default function ReviewScreen() {
         </View>
 
         {/* ── 5. Payment card (separate) ───────────────────────────────────── */}
+        {can ('khata', 'create') &&
         <View className="px-5 mb-4">
           <View className="bg-white rounded-[22px] px-5 py-3 border border-card"
             style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
@@ -442,7 +446,7 @@ export default function ReviewScreen() {
               </View>
             )}
           </View>
-        </View>
+        </View>}
       </ScrollView>
 
       {/* ── Sticky Footer ───────────────────────────────────────────────────── */}
