@@ -5,24 +5,31 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 
-// 1. Added onClose to the props destructing
 export default function PremiumLock({ children, featureName, description, icon = "lock", onClose }) {
   const router = useRouter();
   const { user } = useAuth();
 
-  // If the user is an Owner with Premium, or a Staff member (whose owner is premium), let them in!
-  const isPremium = user?.isPremium || user?.subscription?.status === 'active';
+  // 1. Identify if the current user is staff (they will have an owner_id)
+  const isStaff = Boolean(user?.owner_id || user?.ownerId);
+
+  // 2. Safely check both the direct user and the populated owner object
+  // (Handling both camelCase and snake_case just in case your API formats it differently)
+  const owner = user?.owner_id || user?.ownerId;
+  const isPremium = 
+    user?.isPremium || 
+    user?.subscription?.status === 'active' || 
+    owner?.isPremium || 
+    owner?.subscription?.status === 'active';
 
   if (isPremium) {
     return <>{children}</>;
   }
 
-  // 2. Created a safe back handler
   const handleBack = () => {
     if (onClose) {
-      onClose(); // Just close the modal if provided
+      onClose(); 
     } else {
-      router.back(); // Otherwise, pop the screen
+      router.back(); 
     }
   };
 
@@ -30,7 +37,6 @@ export default function PremiumLock({ children, featureName, description, icon =
   return (
     <SafeAreaView className="flex-1 bg-bg justify-center">
       <View className="px-6 py-4 flex-row items-center absolute top-10 left-0 z-10 w-full">
-        {/* 3. Replaced router.back() with handleBack */}
         <Pressable onPress={handleBack} className="bg-card p-3 rounded-2xl active:opacity-50">
           <Feather name="arrow-left" size={20} color="#1f2617" />
         </Pressable>
@@ -74,18 +80,26 @@ export default function PremiumLock({ children, featureName, description, icon =
           </View>
         </View>
 
-        <Pressable 
-          onPress={() => {
-            if (onClose) onClose(); // Optionally dismiss the modal before navigating
-            router.push('/subscription');
-          }}
-          className="bg-primaryText py-5 rounded-3xl items-center shadow-2xl active:opacity-70 flex-row justify-center mb-4 border border-primaryText"
-        >
-          <MaterialCommunityIcons name="crown" size={20} color="#e5fc01" />
-          <Text className="text-accent font-black uppercase tracking-widest ml-2 text-sm">Upgrade to Premium</Text>
-        </Pressable>
+        {/* 3. Conditional UI: Hide the purchase button if the user is a staff member */}
+        {isStaff ? (
+          <View className="bg-red-50 p-4 rounded-2xl border border-red-100 mb-4">
+            <Text className="text-red-500 font-bold text-center text-xs">
+              This is a Premium feature. Ask your shop owner to upgrade their account to unlock it for the team.
+            </Text>
+          </View>
+        ) : (
+          <Pressable 
+            onPress={() => {
+              if (onClose) onClose();
+              router.push('/subscription');
+            }}
+            className="bg-primaryText py-5 rounded-3xl items-center shadow-2xl active:opacity-70 flex-row justify-center mb-4 border border-primaryText"
+          >
+            <MaterialCommunityIcons name="crown" size={20} color="#e5fc01" />
+            <Text className="text-accent font-black uppercase tracking-widest ml-2 text-sm">Upgrade to Premium</Text>
+          </Pressable>
+        )}
         
-        {/* 4. Replaced router.back() with handleBack */}
         <Pressable onPress={handleBack} className="py-4 items-center">
           <Text className="text-secondaryText font-bold uppercase tracking-widest text-[10px]">Maybe Later</Text>
         </Pressable>

@@ -45,7 +45,9 @@ export const verifyStaffOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phone number, OTP, and deviceId are required' });
     }
 
-    const staff = await Staff.findOne({ phone_number: phoneNumber });
+    // 👇 1. UPDATE THIS LINE TO POPULATE THE OWNER's PREMIUM DATA
+    const staff = await Staff.findOne({ phone_number: phoneNumber })
+      .populate('owner_id', 'isPremium subscription');
 
     if (!staff) {
       return res.status(401).json({ success: false, message: 'Invalid phone number' });
