@@ -93,15 +93,14 @@ export default function SubCategoryScreen() {
     <SafeAreaView className="flex-1 bg-bg">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <View className="px-6 py-4 flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <TouchableOpacity onPress={() => router.back()} className="bg-card p-3 rounded-2xl mr-4">
-            <Feather name="arrow-left" size={20} color="#1f2617" />
-          </TouchableOpacity>
-          <View>
-            <Text className="text-primaryText text-2xl font-black">Item Groups</Text>
-            <Text className="text-secondaryText font-medium text-xs">Select or Manage</Text>
-          </View>
+      <View className="px-4 py-3 flex-row items-center">
+        <TouchableOpacity onPress={() => router.back()} className="bg-card p-3 rounded-2xl mr-3">
+          <Feather name="arrow-left" size={20} color="#1f2617" />
+        </TouchableOpacity>
+
+        <View className="flex-1">
+          <Text className="text-primaryText text-xl font-black">Item Groups</Text>
+          <Text className="text-secondaryText font-medium text-[11px]">Select or Manage</Text>
         </View>
 
         {/* Clear cart button — only visible when cart has items */}
@@ -109,30 +108,38 @@ export default function SubCategoryScreen() {
           <TouchableOpacity
             onPress={handleClearCart}
             activeOpacity={0.7}
-            className="flex-row items-center bg-red-50 border border-red-200 px-3 py-2 rounded-2xl"
+            className="flex-row items-center bg-red-50 border border-red-200 px-3 py-2 rounded-2xl mr-2"
           >
-            <Feather name="trash-2" size={14} color="#ef4444" />
-            <Text className="text-red-500 font-black text-[11px] uppercase tracking-widest ml-1.5">
+            <Feather name="trash-2" size={13} color="#ef4444" />
+            <Text className="text-red-500 font-black text-[11px] uppercase tracking-widest ml-1">
               Clear
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* Add new subcategory button */}
+        <TouchableOpacity
+          onPress={openCreateModal}
+          className="bg-primaryText p-3 rounded-2xl"
+        >
+          <Feather name="plus" size={20} color="#e5fc01" />
+        </TouchableOpacity>
       </View>
 
       {/* ── Search Bar ───────────────────────────────────────────────────── */}
-      <View className="px-6 mb-4 mt-2">
-        <View className="bg-white flex-row items-center px-4 py-3 rounded-2xl border border-card shadow-sm">
-          <Feather name="search" size={20} color="#bfb5a8" />
+      <View className="px-4 mb-4 mt-2">
+        <View className="bg-white flex-row items-center px-4 py-2.5 rounded-2xl border border-card shadow-sm">
+          <Feather name="search" size={18} color="#bfb5a8" />
           <TextInput
             placeholder="Search sub-categories..."
             placeholderTextColor="#bfb5a8"
             value={searchTerm}
             onChangeText={setSearchTerm}
-            className="flex-1 ml-3 text-primaryText font-bold"
+            className="flex-1 ml-3 text-primaryText font-bold text-sm"
           />
           {searchTerm.length > 0 && (
             <TouchableOpacity onPress={() => setSearchTerm('')}>
-              <Feather name="x-circle" size={18} color="#bfb5a8" />
+              <Feather name="x-circle" size={16} color="#bfb5a8" />
             </TouchableOpacity>
           )}
         </View>
@@ -152,7 +159,7 @@ export default function SubCategoryScreen() {
           {!searchTerm && (
             <TouchableOpacity
               onPress={() => router.push('/products/all')}
-              className="bg-primaryText p-6 rounded-[32px] mb-6 flex-row items-center justify-between shadow-xl"
+              className="bg-primaryText px-6 py-4 rounded-[32px] mb-4 flex-row items-center justify-between shadow-xl"
             >
               <View className="flex-row items-center">
                 <View className="bg-white/10 p-3 rounded-2xl mr-4 border border-white/10">
@@ -191,21 +198,13 @@ export default function SubCategoryScreen() {
         </ScrollView>
       )}
 
-      {/* ── FAB — moves up when checkout bar is visible ───────────────────── */}
-      <TouchableOpacity
-        onPress={openCreateModal}
-        className={`absolute right-6 bg-accent w-16 h-16 rounded-[22px] items-center justify-center shadow-lg border-accent/40 border z-40 ${totalQty > 0 ? 'bottom-32' : 'bottom-10'}`}
-      >
-        <Feather name="plus" size={28} color="#1f2617" />
-      </TouchableOpacity>
-
       {/* ── Sticky Checkout Bar ───────────────────────────────────────────── */}
       {totalQty > 0 && (
         <View className="absolute bottom-6 left-6 right-6 z-50">
           <TouchableOpacity
             onPress={() => router.push('/customer')}
             activeOpacity={0.9}
-            className="bg-primaryText p-5 rounded-[24px] flex-row items-center justify-between shadow-2xl shadow-primaryText/50"
+            className="bg-primaryText px-5 py-4 rounded-[24px] flex-row items-center justify-between shadow-2xl shadow-primaryText/50"
           >
             <View className="flex-row items-center">
               <View className="bg-accent w-12 h-12 rounded-full items-center justify-center mr-4">

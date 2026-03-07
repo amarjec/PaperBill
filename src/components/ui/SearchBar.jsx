@@ -4,8 +4,8 @@ import { Feather } from '@expo/vector-icons';
 
 export const SearchBar = ({ value, onChangeText, placeholder = "Search..." }) => {
   return (
-    <View className="px-6 pt-4 pb-2">
-      <View className="bg-white flex-row items-center px-5 py-4 rounded-full border border-card shadow-sm">
+    <View className="px-6 pt-3 mb-2">
+      <View className="bg-white flex-row items-center px-4 py-2.5 rounded-full border border-card shadow-sm">
         <Feather name="search" size={20} color="#bfb5a8" />
         <TextInput 
           placeholder={placeholder} 
