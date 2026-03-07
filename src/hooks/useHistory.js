@@ -2,19 +2,19 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import { billApi } from "../api/billApi";
+import { usePermission } from "./usePermission"; // <-- 1. Import Permission Hook
 
 export function useHistory() {
   const [bills, setBills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeTab, setActiveTab] = useState("Bills"); // 'Bills' | 'Estimates'
+  const [activeTab, setActiveTab] = useState("Bills"); 
 
-  // Date filter: 'today' | 'week' | 'month' | 'year' | 'all' | 'custom'
   const [dateFilter, setDateFilter] = useState("all");
-  // payment filter: 'all' | 'Paid' | 'Unpaid' | 'Partial'
   const [paymentFilter, setPaymentFilter] = useState("all");
-  // custom range
   const [customRange, setCustomRange] = useState({ start: null, end: null });
+  
+  const { can } = usePermission(); // <-- 2. Initialize it
 
   const applyCustomRange = (start, end) => {
     const s = new Date(start);
@@ -26,6 +26,13 @@ export function useHistory() {
   };
 
   const fetchBills = async () => {
+    // 3. 🚨 Guard: Block API call if no read permission
+    if (!can('bills', 'read')) {
+      setBills([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       const res = await billApi.getAll();

@@ -94,18 +94,27 @@ export const createBill = async (req, res) => {
 
 export const getBills = async (req, res) => {
   try {
-    const owner_id = getOwnerId(req.user);
+    const { user } = req;
+    const owner_id = getOwnerId(user);
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const skip = (page - 1) * limit;
 
+    // 1. Base query for the shop
+    const query = { owner_id, is_deleted: false };
+
+    // 2. 🚨 STAFF GUARD: Only return bills created by this specific staff member
+    if (user.role === "Staff") {
+      query.created_by = user.name;
+    }
+
     const [bills, total] = await Promise.all([
-      Bill.find({ owner_id, is_deleted: false })
+      Bill.find(query)
         .populate("customer_id", "name phone")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      Bill.countDocuments({ owner_id, is_deleted: false }),
+      Bill.countDocuments(query),
     ]);
 
     res.status(200).json({
