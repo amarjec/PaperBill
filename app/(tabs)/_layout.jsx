@@ -2,8 +2,10 @@ import { Tabs } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import GlobalHeader from '../../src/components/GlobalHeader';
+import { usePermission } from '@/src/hooks/usePermission';
 
 export default function TabLayout() {
+  const { can } = usePermission();
   return (
     <Tabs
       screenOptions={{
@@ -50,6 +52,7 @@ export default function TabLayout() {
         name="ledger"
         options={{
           title: 'Ledger',
+          href: can('khata', 'read') ? '/ledger' : null,
           tabBarIcon: ({ color, focused }) => (
             <Feather name="book-open" size={22} color={color} />
           ),
@@ -59,6 +62,7 @@ export default function TabLayout() {
         name="history"
         options={{
           title: 'Bills',
+          // href: can('bills', 'read') ? '/history' : null,
           tabBarIcon: ({ color, focused }) => (
             <Feather name="list" size={22} color={color} />
           ),

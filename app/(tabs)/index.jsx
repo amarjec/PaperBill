@@ -7,11 +7,13 @@ import { useCategories } from '@/src/hooks/useCategories';
 import { CategoryCard } from '@/src/components/inventory/CategoryCard';
 import { SearchBar } from '@/src/components/ui/SearchBar';
 import { FloatingButton } from '@/src/components/ui/FloatingButton';
+import { usePermission } from '@/src/hooks/usePermission';
 
 export default function HomeTab() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const { categories, loading, isSubmitting, handleSave, handleDelete } = useCategories(searchTerm);
+  const { can } = usePermission();
 
   // Modal States
   const [selectedCategory, setSelectedCategory] = useState(null); 
@@ -108,9 +110,11 @@ export default function HomeTab() {
       )}
 
       {/* 2. Reusable FAB */}
-      <FloatingButton onPress={openCreateModal} bottomOffset={30} />
+      {can('category', 'create') &&
+      <FloatingButton onPress={openCreateModal} bottomOffset={30} />}
 
       {/* 1. Action Modal (Triggered by Long Press) */}
+      {(can('category', 'update') || can('category', 'delete'))&&
       <Modal visible={actionModalVisible} transparent animationType="fade">
         <TouchableOpacity activeOpacity={1} onPress={() => setActionModalVisible(false)} className="flex-1 bg-primaryText/40 justify-end">
           <View className="bg-bg p-6 rounded-t-[40px] shadow-2xl">
@@ -120,26 +124,28 @@ export default function HomeTab() {
               {selectedCategory?.name || 'Category Options'}
             </Text>
             
+            {can('category', 'update') &&
             <TouchableOpacity onPress={openEditModal} className="bg-white p-5 rounded-[24px] flex-row items-center mb-3 shadow-sm border border-card/40">
               <View className="bg-bg p-2 rounded-full">
                 <Feather name="edit-2" size={18} color="#1f2617" />
               </View>
               <Text className="text-primaryText font-black text-base ml-4">Edit Category</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
 
+            { can('category', 'delete') &&
             <TouchableOpacity onPress={confirmDelete} className="bg-red-50 p-5 rounded-[24px] flex-row items-center mb-6 shadow-sm border border-red-100">
               <View className="bg-red-100 p-2 rounded-full">
                 <Feather name="trash-2" size={18} color="#ef4444" />
               </View>
               <Text className="text-red-600 font-black text-base ml-4">Delete Category</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
 
             <TouchableOpacity onPress={() => setActionModalVisible(false)} className="py-4 items-center">
               <Text className="text-secondaryText font-bold text-sm uppercase tracking-widest">Cancel</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
-      </Modal>
+      </Modal>}
 
       {/* 2. Form Modal (Create / Update) */}
       <Modal visible={formModalVisible} transparent animationType="slide">

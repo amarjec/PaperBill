@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useCustomers } from '@/src/hooks/useCustomers';
 import { CustomerCard } from '@/src/components/customers/CustomerCard';
 import { useApp } from '@/src/context/AppContext';
+import { usePermission } from '@/src/hooks/usePermission';
 
 const Field = ({ label, ...props }) => (
   <View className="mb-4">
@@ -27,6 +28,7 @@ export default function CustomerScreen() {
   const router = useRouter();
   const { setSelectedCustomer, list } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+  const { can } = usePermission();
 
   const {
     customers, loading, isSubmitting,
@@ -108,10 +110,12 @@ export default function CustomerScreen() {
       setSelectedCustomer(customer);
       router.push('/review');
     } else {
-      // Profile/ledger flow: open the customer's khata
-      router.push(`/khata/${customer._id}`);
+      if (can ('khata', 'read')) {
+        // Profile/ledger flow: open the customer's khata
+        router.push(`/khata/${customer._id}`);
+      }
     }
-  };
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
@@ -131,6 +135,7 @@ export default function CustomerScreen() {
           </Text>
         </View>
 
+        {can('customers', 'create') && 
         <TouchableOpacity
           onPress={openCreate}
           activeOpacity={0.85}
@@ -139,7 +144,7 @@ export default function CustomerScreen() {
         >
           <Feather name="user-plus" size={15} color="#e5fc01" />
           <Text className="text-accent font-black text-[11px] uppercase tracking-widest ml-1.5">New</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
       </View>
 
       {/* ── Search ─────────────────────────────────────────────────────────── */}
@@ -229,6 +234,7 @@ export default function CustomerScreen() {
       )}
 
       {/* ── Long Press Action Modal ─────────────────────────────────────────── */}
+      {(can('customers', 'update') || can('customers', 'delete') || can('khata', 'read')) &&
       <Modal visible={actionVisible} transparent animationType="fade">
         <TouchableOpacity
           activeOpacity={1}
@@ -255,7 +261,7 @@ export default function CustomerScreen() {
             </View>
 
             {/* View Khata — only shown in ledger mode since billing mode tapping already goes to review */}
-            {!isBillingMode && (
+            {!isBillingMode && (can ('khata', 'read')) && (
               <TouchableOpacity
                 onPress={() => {
                   setActionVisible(false);
@@ -275,7 +281,9 @@ export default function CustomerScreen() {
               </TouchableOpacity>
             )}
 
+           
             {/* Edit */}
+            {can('customers', 'update') &&
             <TouchableOpacity
               onPress={openEdit}
               className="bg-white border border-card rounded-2xl px-5 py-4 flex-row items-center mb-3"
@@ -289,9 +297,10 @@ export default function CustomerScreen() {
                 <Text className="text-secondaryText text-[10px] font-bold mt-0.5">Update name, phone or address</Text>
               </View>
               <Feather name="chevron-right" size={16} color="#bfb5a8" />
-            </TouchableOpacity>
+            </TouchableOpacity> }
 
             {/* Delete */}
+            {can('customers', 'delete') &&
             <TouchableOpacity
               onPress={confirmDelete}
               className="bg-red-50 border border-red-100 rounded-2xl px-5 py-4 flex-row items-center"
@@ -304,10 +313,11 @@ export default function CustomerScreen() {
                 <Text className="text-red-400 text-[10px] font-bold mt-0.5">Also removes Khata history</Text>
               </View>
               <Feather name="chevron-right" size={16} color="#fca5a5" />
-            </TouchableOpacity>
+            </TouchableOpacity>}
+
           </View>
         </TouchableOpacity>
-      </Modal>
+      </Modal>}
 
       {/* ── Create / Edit Form Modal ────────────────────────────────────────── */}
       <Modal visible={formVisible} transparent animationType="slide">

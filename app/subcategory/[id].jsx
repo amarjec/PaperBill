@@ -10,11 +10,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSubCategories } from '@/src/hooks/useSubCategories';
 import { SubCategoryCard } from '@/src/components/inventory/SubCategoryCard';
 import { useApp } from '@/src/context/AppContext';
+import { usePermission } from '@/src/hooks/usePermission';
 
 export default function SubCategoryScreen() {
   const { id: categoryId } = useLocalSearchParams();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const { can } = usePermission();
 
   const { subCategories, loading, isSubmitting, handleSave, handleDelete } = useSubCategories(categoryId, searchTerm);
 
@@ -118,12 +120,13 @@ export default function SubCategoryScreen() {
         )}
 
         {/* Add new subcategory button */}
+        {can('subcategory', 'create') &&
         <TouchableOpacity
           onPress={openCreateModal}
           className="bg-primaryText p-3 rounded-2xl"
         >
           <Feather name="plus" size={20} color="#e5fc01" />
-        </TouchableOpacity>
+        </TouchableOpacity>}
       </View>
 
       {/* ── Search Bar ───────────────────────────────────────────────────── */}
@@ -226,6 +229,7 @@ export default function SubCategoryScreen() {
       )}
 
       {/* ── Action Modal (Long Press) ─────────────────────────────────────── */}
+      {(can('subcategory', 'update') || can('subcategory', 'delete')) &&
       <Modal visible={actionModalVisible} transparent animationType="fade">
         <TouchableOpacity
           activeOpacity={1}
@@ -237,24 +241,26 @@ export default function SubCategoryScreen() {
               Manage "{selectedSub?.name || ''}"
             </Text>
 
+            {can('subcategory', 'update') &&
             <TouchableOpacity
               onPress={openEditModal}
               className="bg-white p-5 rounded-2xl flex-row items-center mb-3 shadow-sm border border-card"
             >
               <Feather name="edit-2" size={20} color="#1f2617" />
               <Text className="text-primaryText font-black text-lg ml-4">Rename Group</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
 
+            {can('subcategory', 'delete') &&
             <TouchableOpacity
               onPress={confirmDelete}
               className="bg-red-50 p-5 rounded-2xl flex-row items-center mb-6 shadow-sm border border-red-100"
             >
               <Feather name="trash-2" size={20} color="#ef4444" />
               <Text className="text-red-600 font-black text-lg ml-4">Delete Group</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
           </View>
         </TouchableOpacity>
-      </Modal>
+      </Modal>}
 
       {/* ── Form Modal (Create / Edit) ────────────────────────────────────── */}
       <Modal visible={formModalVisible} transparent animationType="slide">
