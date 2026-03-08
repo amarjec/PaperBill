@@ -36,18 +36,8 @@ export function useProfile() {
       
       if (res.success) {
         setProfile(res.user);
-        
-        const needsUpdate = 
-          user?.isPremium !== res.user.isPremium || 
-          user?.has_inventory !== res.user.has_inventory;
-
-        if (needsUpdate) {
-          if (updateSessionUser) {
-             updateSessionUser(res.user); 
-          } else {
-             setUser(res.user);    
-          }
-        }
+        // Keep session in sync (name, business details, etc. may have changed)
+        await updateSessionUser(res.user);
       }
     } catch (error) {
       console.log("Failed to load profile", error);
