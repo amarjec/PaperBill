@@ -376,3 +376,88 @@ export const convertBillBrand = async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 };
+
+// ── POST /api/bills/:id/convert-estimate ──────────────────────────────────────
+// Converts an estimate into a real bill.
+// Body (all optional): { customer_id, amount_paid, price_mode }
+//
+// Logic:
+//   - Flips is_estimate → false
+//   - Assigns a fresh bill_number (the estimate's number is recycled)
+//   - Recalculates status based on amount_paid
+//   - If customer_id is provided, updates their total_debt and records a
+//     KhataTransaction for any upfront payment
+export const convertEstimateToBill = async (req, res) => {
+  try {
+    const { params, body, user } = req;
+    const owner_id = getOwnerId(user);
+    const { customer_id, amount_paid = 0, price_mode } = body;
+
+    const estimate = await Bill.findOne({
+      _id: params.id,
+      owner_id,
+      is_deleted: false,
+      is_estimate: true,          // must be an estimate
+    });
+
+    if (!estimate) {
+      return res.status(404).json({
+        success: false,
+        message: "Estimate not found or already converted.",
+      });
+    }
+
+    const finalAmountPaid = Math.min(Number(amount_paid), estimate.total_amount);
+    const finalCustomerId = customer_id || estimate.customer_id || null;
+    const finalPriceMode  = price_mode  || estimate.price_mode;
+    const status = deriveStatus(false, finalAmountPaid, estimate.total_amount);
+
+    // Generate a new bill number for the converted bill
+    const bill_number = await generateBillNumber(owner_id);
+
+    const convertedBill = await Bill.findByIdAndUpdate(
+      params.id,
+      {
+        is_estimate:  false,
+        bill_number,
+        price_mode:   finalPriceMode,
+        customer_id:  finalCustomerId,
+        amount_paid:  finalAmountPaid,
+        status,
+        updated_by:   user.name,
+      },
+      { new: true },
+    );
+
+    // Update customer khata if a customer is linked
+    if (finalCustomerId) {
+      const debtAmount = estimate.total_amount - finalAmountPaid;
+
+      await Promise.all([
+        debtAmount > 0
+          ? Customer.findByIdAndUpdate(finalCustomerId, {
+              $inc: { total_debt: debtAmount },
+            })
+          : Promise.resolve(),
+
+        finalAmountPaid > 0
+          ? KhataTransaction.create({
+              owner_id,
+              customer_id: finalCustomerId,
+              amount: finalAmountPaid,
+              type: "Payment",
+              received_by: user.name,
+            })
+          : Promise.resolve(),
+      ]);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Estimate converted to bill successfully.",
+      bill: convertedBill,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

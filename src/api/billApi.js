@@ -24,5 +24,9 @@ export const billApi = {
   convertBrand: async (id, target_brand) => {
     const { data } = await apiClient.put(`/bills/${id}/convert-brand`, { target_brand });
     return data;
+  },
+  convertEstimate: async (id, payload) => {
+    const { data } = await apiClient.post(`/bills/${id}/convert-estimate`, payload);
+    return data;
   }
 };
