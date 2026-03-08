@@ -21,7 +21,7 @@ export default function SubCategoryScreen() {
   const { subCategories, loading, isSubmitting, handleSave, handleDelete } = useSubCategories(categoryId, searchTerm);
 
   // ── Cart ──────────────────────────────────────────────────────────────────
-  const { list, setList } = useApp();
+  const { list, setList, setSelectedCustomer } = useApp(); // <-- Added setSelectedCustomer to fully clear state
   const cartItems  = Object.values(list);
   const totalQty   = cartItems.reduce((sum, item) => sum + item.qty, 0);
   const totalPrice = cartItems.reduce((sum, item) => sum + (item.qty * (item.retail_price || 0)), 0);
@@ -41,6 +41,33 @@ export default function SubCategoryScreen() {
           text: 'Clear',
           style: 'destructive',
           onPress: () => setList({}),
+        },
+      ]
+    );
+  };
+
+  // ── NEW: Handle Back Press ────────────────────────────────────────────────
+  const handleBackPress = () => {
+    // If the cart is empty, just go back immediately
+    if (totalQty === 0) {
+      router.back();
+      return;
+    }
+
+    // If they have items in the cart, warn them before trashing their progress
+    Alert.alert(
+      'Abandon Cart?',
+      'Going back to the home screen will clear your current cart.',
+      [
+        { text: 'Stay Here', style: 'cancel' },
+        {
+          text: 'Discard & Go Back',
+          style: 'destructive',
+          onPress: () => {
+            setList({}); // Clear the cart completely
+            setSelectedCustomer(null); // Clear any attached customer
+            router.back(); // Navigate to Home
+          },
         },
       ]
     );
@@ -96,7 +123,9 @@ export default function SubCategoryScreen() {
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <View className="px-4 py-3 flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="bg-card p-3 rounded-2xl mr-3">
+        
+        {/* 1. UPDATED BACK BUTTON */}
+        <TouchableOpacity onPress={handleBackPress} className="bg-card p-3 rounded-2xl mr-3">
           <Feather name="arrow-left" size={20} color="#1f2617" />
         </TouchableOpacity>
 
