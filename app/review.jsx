@@ -178,21 +178,30 @@ export default function ReviewScreen() {
     generateBill,
   } = useReview();
 
-  const {can} = usePermission();
+  const { can } = usePermission();
 
   const [showAdjustments, setShowAdjustments] = useState(false);
+  const [submitType, setSubmitType] = useState(null); // Tracks 'estimate' or 'bill' to show loader on correct button
+
+  // Helper to check if it's a walk-in customer
+  const isWalkIn = !selectedCustomer || !selectedCustomer._id;
 
   const handleSubmission = async (isEstimate) => {
+    setSubmitType(isEstimate ? 'estimate' : 'bill');
     const success = await generateBill(isEstimate);
     if (success) {
       Alert.alert('Done!', isEstimate ? 'Estimate saved.' : 'Bill created.',
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)/history') }]
       );
+    }
+    // Only reset state if the submission failed, otherwise we are unmounting
+    if (!success) {
+      setSubmitType(null);
     }
   };
 
   // Cap display of outstanding
-  const paidAmt    = Math.min(safeNum(amountPaid), totals.finalTotal);
+  const paidAmt     = Math.min(safeNum(amountPaid), totals.finalTotal);
   const outstanding = collectingPayment ? Math.max(0, totals.finalTotal - paidAmt) : 0;
 
   return (
@@ -382,71 +391,72 @@ export default function ReviewScreen() {
           </View>
         </View>
 
-        {/* ── 5. Payment card (separate) ───────────────────────────────────── */}
-        {can ('khata', 'create') &&
-        <View className="px-5 mb-4">
-          <View className="bg-white rounded-[22px] px-5 py-3 border border-card"
-            style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
-          >
-            {/* Single checkbox: "Full payment received" */}
-            <TouchableOpacity
-              onPress={() => {
-                const next = !collectingPayment;
-                setCollectingPayment(next);
-                // Un-ticking opens blank field — user types their own amount
-                if (next) setAmountPaid('');
-              }}
-              activeOpacity={0.8}
-              className="flex-row items-center"
+        {/* ── 5. Payment card (Hidden if walk-in or missing khata permission) ── */}
+        {can('khata', 'create') && !isWalkIn && (
+          <View className="px-5 mb-4">
+            <View className="bg-white rounded-[22px] px-5 py-3 border border-card"
+              style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
             >
-              <View className={`w-6 h-6 rounded-lg border-2 items-center justify-center mr-3 flex-shrink-0
-                ${!collectingPayment ? 'bg-primaryText border-primaryText' : 'border-card bg-bg'}`}
+              {/* Single checkbox: "Full payment received" */}
+              <TouchableOpacity
+                onPress={() => {
+                  const next = !collectingPayment;
+                  setCollectingPayment(next);
+                  // Un-ticking opens blank field — user types their own amount
+                  if (next) setAmountPaid('');
+                }}
+                activeOpacity={0.8}
+                className="flex-row items-center"
               >
-                {!collectingPayment && <Feather name="check" size={13} color="#e5fc01" />}
-              </View>
-              <View className="flex-1">
-                <Text className="text-primaryText font-black text-[14px]">Full payment received</Text>
-                <Text className="text-secondaryText text-[10px] font-bold mt-0.5">
-                  {!collectingPayment ? `₹${totals.finalTotal} — fully paid` : 'Tap to mark as fully paid'}
-                </Text>
-              </View>
-            </TouchableOpacity>
+                <View className={`w-6 h-6 rounded-lg border-2 items-center justify-center mr-3 flex-shrink-0
+                  ${!collectingPayment ? 'bg-primaryText border-primaryText' : 'border-card bg-bg'}`}
+                >
+                  {!collectingPayment && <Feather name="check" size={13} color="#e5fc01" />}
+                </View>
+                <View className="flex-1">
+                  <Text className="text-primaryText font-black text-[14px]">Full payment received</Text>
+                  <Text className="text-secondaryText text-[10px] font-bold mt-0.5">
+                    {!collectingPayment ? `₹${totals.finalTotal} — fully paid` : 'Tap to mark as fully paid'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-            {/* Partial amount input — blank so user types their own amount */}
-            {collectingPayment && (
-              <View className="mt-4 pt-4 border-t border-card/60">
-                <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest mb-2 ml-1">
-                  Amount Received Now (₹)
-                </Text>
-                <TextInput
-                  autoFocus
-                  value={amountPaid}
-                  onChangeText={(v) => {
-                    // Never allow more than total
-                    const n = parseFloat(v);
-                    if (!isNaN(n) && n > totals.finalTotal) {
-                      setAmountPaid(String(totals.finalTotal));
-                    } else {
-                      setAmountPaid(v);
-                    }
-                  }}
-                  keyboardType="numeric"
-                  placeholder={`Max ₹${totals.finalTotal}`}
-                  placeholderTextColor="#bfb5a8"
-                  className="bg-bg px-4 py-4 rounded-2xl border border-card font-black text-xl text-primaryText"
-                />
-                {outstanding > 0 && (
-                  <View className="flex-row items-center mt-2.5 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
-                    <Feather name="alert-circle" size={13} color="#ef4444" />
-                    <Text className="text-red-500 text-[11px] font-bold ml-2">
-                      ₹{outstanding} outstanding — added to Khata
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
+              {/* Partial amount input — blank so user types their own amount */}
+              {collectingPayment && (
+                <View className="mt-4 pt-4 border-t border-card/60">
+                  <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest mb-2 ml-1">
+                    Amount Received Now (₹)
+                  </Text>
+                  <TextInput
+                    autoFocus
+                    value={amountPaid}
+                    onChangeText={(v) => {
+                      // Never allow more than total
+                      const n = parseFloat(v);
+                      if (!isNaN(n) && n > totals.finalTotal) {
+                        setAmountPaid(String(totals.finalTotal));
+                      } else {
+                        setAmountPaid(v);
+                      }
+                    }}
+                    keyboardType="numeric"
+                    placeholder={`Max ₹${totals.finalTotal}`}
+                    placeholderTextColor="#bfb5a8"
+                    className="bg-bg px-4 py-4 rounded-2xl border border-card font-black text-xl text-primaryText"
+                  />
+                  {outstanding > 0 && (
+                    <View className="flex-row items-center mt-2.5 bg-red-50 border border-red-100 px-3 py-2 rounded-xl">
+                      <Feather name="alert-circle" size={13} color="#ef4444" />
+                      <Text className="text-red-500 text-[11px] font-bold ml-2">
+                        ₹{outstanding} outstanding — added to Khata
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
           </View>
-        </View>}
+        )}
       </ScrollView>
 
       {/* ── Sticky Footer ───────────────────────────────────────────────────── */}
@@ -454,18 +464,26 @@ export default function ReviewScreen() {
         <Pressable
           onPress={() => !isSubmitting && handleSubmission(true)}
           disabled={isSubmitting}
-          className="flex-1 bg-card py-4 rounded-2xl items-center border border-card active:opacity-70"
+          className="flex-1 bg-card py-4 rounded-2xl items-center border border-card active:opacity-70 justify-center"
         >
-          <Text className="text-secondaryText font-bold uppercase tracking-widest text-[9px]">No Payment</Text>
-          <Text className="text-primaryText font-black mt-0.5 text-[13px]">Estimate</Text>
+          {isSubmitting && submitType === 'estimate' ? (
+            <ActivityIndicator color="#1f2617" />
+          ) : (
+            <>
+              <Text className="text-secondaryText font-bold uppercase tracking-widest text-[9px]">No Payment</Text>
+              <Text className="text-primaryText font-black mt-0.5 text-[13px]">Estimate</Text>
+            </>
+          )}
         </Pressable>
         <Pressable
           onPress={() => !isSubmitting && handleSubmission(false)}
           disabled={isSubmitting}
-          className="flex-[1.8] bg-accent py-4 rounded-2xl items-center active:opacity-80"
+          className="flex-[1.8] bg-accent py-4 rounded-2xl items-center active:opacity-80 justify-center"
           style={{ shadowColor: '#e5fc01', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 4 }}
         >
-          {isSubmitting ? <ActivityIndicator color="#1f2617" /> : (
+          {isSubmitting && submitType === 'bill' ? (
+            <ActivityIndicator color="#1f2617" />
+          ) : (
             <>
               <Text className="text-primaryText font-bold uppercase tracking-widest text-[9px]">Finalize</Text>
               <Text className="text-primaryText font-black mt-0.5 text-[13px]">Generate Bill</Text>

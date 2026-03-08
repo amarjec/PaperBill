@@ -280,15 +280,7 @@ export default function ProfileScreen() {
                   </View>
                   <Feather name="chevron-right" size={15} color="#7c3aed" />
                 </TouchableOpacity>
-                <Sep />
-                <Row
-                  icon="file-text"
-                  iconBg="bg-blue-50"
-                  iconColor="#2563eb"
-                  label="Bills & Invoices"
-                  sub="All generated bills"
-                  onPress={() => router.push("/(tabs)/history")}
-                />
+              
               </View>
             </View>
 
@@ -323,21 +315,19 @@ export default function ProfileScreen() {
             </Group>
 
             <Group label="About">
-              <Row icon="info" label="App Version" rightText="1.0.0" />
-              <Sep />
-              <Row icon="shield" label="Privacy Policy" onPress={() => {}} />
+              <Row icon="shield" label="Privacy Policy" onPress={() => {router.push("/legal")}} />
               <Sep />
               <Row
                 icon="help-circle"
                 label="Help & Support"
-                onPress={() => {}}
+                onPress={() => {router.push("/support")}}
               />
             </Group>
           </>
         )}
 
         {/* ════ STAFF ══════════════════════════════════════════════════════════ */}
-        {isStaff && (
+        {/* {isStaff && (
           <>
             <StaffCard profile={profile} />
 
@@ -361,7 +351,7 @@ export default function ProfileScreen() {
               />
             </Group>
           </>
-        )}
+        )} */}
 
         {/* ── Account actions — both owner & staff ────────────────────────── */}
         <View className="px-5">
