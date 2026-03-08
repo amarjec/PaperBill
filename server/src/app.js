@@ -14,7 +14,7 @@ import inventoryRoutes from './routes/inventory.route.js';
 import paymentRoutes from './routes/payment.route.js';
 import analyticsRoutes from './routes/analytics.route.js';
 import subCategoryRoutes from './routes/subcategory.route.js';
-
+import recycleBinRoutes from './routes/recycleBin.route.js';
 
 
 const app = express();
@@ -38,7 +38,7 @@ app.use('/api/bills', billRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/analytics', analyticsRoutes);
-
+app.use('/api/recycle-bin', recycleBinRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });

@@ -1,4 +1,5 @@
 import Subcategory from "../models/Subcategory.js";
+import Product from "../models/Product.js";
 
 const getOwnerId = (user) => (user.role === "Owner" ? user.userId : user.ownerId);
 
@@ -68,16 +69,31 @@ export const updateSubcategory = async (req, res) => {
   }
 };
 
+// ── Cascade soft-delete: subcategory → its products ───────────────────────────
 export const softDeleteSubcategory = async (req, res) => {
   try {
     const { params, user } = req;
+    const owner_id = getOwnerId(user);
+    const now = new Date();
+
+    // 1. Soft-delete the subcategory itself
     const subcategory = await Subcategory.findOneAndUpdate(
-      { _id: params.id, owner_id: getOwnerId(user), is_deleted: false },
-      { is_deleted: true, deleted_by: user.name, deleted_at: new Date() },
+      { _id: params.id, owner_id, is_deleted: false },
+      { is_deleted: true, deleted_by: user.name, deleted_at: now },
     );
 
-    if (!subcategory) return res.status(404).json({ success: false, message: "Subcategory not found." });
-    res.status(200).json({ success: true, message: "Subcategory deleted." });
+    if (!subcategory) {
+      return res.status(404).json({ success: false, message: "Subcategory not found." });
+    }
+
+    // 2. Cascade: soft-delete all products that belong to this subcategory
+    //    Only touch products that are NOT already deleted (avoids stomping existing deletions)
+    await Product.updateMany(
+      { owner_id, subcategory_id: subcategory._id, is_deleted: false },
+      { is_deleted: true, deleted_by: `[Subcategory deleted by ${user.name}]`, deleted_at: now },
+    );
+
+    res.status(200).json({ success: true, message: "Subcategory and its products deleted." });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

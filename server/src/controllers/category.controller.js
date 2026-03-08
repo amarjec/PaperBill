@@ -1,4 +1,6 @@
 import Category from "../models/Category.js";
+import Subcategory from "../models/Subcategory.js";
+import Product from "../models/Product.js";
 
 const getOwnerId = (user) => (user.role === "Owner" ? user.userId : user.ownerId);
 
@@ -69,16 +71,62 @@ export const updateCategory = async (req, res) => {
   }
 };
 
+// ── Cascade soft-delete: category → its subcategories → their products ─────────
 export const softDeleteCategory = async (req, res) => {
   try {
     const { params, user } = req;
+    const owner_id = getOwnerId(user);
+    const now = new Date();
+    const deletedBy = user.name;
+
+    // 1. Soft-delete the category itself
     const category = await Category.findOneAndUpdate(
-      { _id: params.id, owner_id: getOwnerId(user), is_deleted: false },
-      { is_deleted: true, deleted_by: user.name, deleted_at: new Date() },
+      { _id: params.id, owner_id, is_deleted: false },
+      { is_deleted: true, deleted_by: deletedBy, deleted_at: now },
     );
 
-    if (!category) return res.status(404).json({ success: false, message: "Category not found." });
-    res.status(200).json({ success: true, message: "Category deleted." });
+    if (!category) {
+      return res.status(404).json({ success: false, message: "Category not found." });
+    }
+
+    // 2. Find all non-deleted subcategories under this category
+    const subcategories = await Subcategory.find({
+      owner_id,
+      category_id: category._id,
+      is_deleted: false,
+    }).select('_id');
+
+    const subcategoryIds = subcategories.map(s => s._id);
+
+    // Run subcategory soft-delete and product cascade in parallel
+    await Promise.all([
+      // 3a. Cascade: soft-delete all those subcategories
+      Subcategory.updateMany(
+        { _id: { $in: subcategoryIds }, owner_id },
+        {
+          is_deleted: true,
+          deleted_by: `[Category deleted by ${deletedBy}]`,
+          deleted_at: now,
+        },
+      ),
+      // 3b. Cascade: soft-delete all products belonging to any of those subcategories
+      //     Also catches products directly referencing this category's subcategories
+      subcategoryIds.length > 0
+        ? Product.updateMany(
+            { owner_id, subcategory_id: { $in: subcategoryIds }, is_deleted: false },
+            {
+              is_deleted: true,
+              deleted_by: `[Category deleted by ${deletedBy}]`,
+              deleted_at: now,
+            },
+          )
+        : Promise.resolve(),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: "Category, its sub-categories, and their products deleted.",
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

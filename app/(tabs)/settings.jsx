@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useProfile } from "@/src/hooks/useProfile";
 
@@ -276,6 +276,35 @@ export default function ProfileScreen() {
                     </View>
                     <Text className="text-secondaryText text-[10px] font-bold mt-0.5">
                       Sales, revenue & profit trends
+                    </Text>
+                  </View>
+                  <Feather name="chevron-right" size={15} color="#7c3aed" />
+                </TouchableOpacity>
+                <Sep />
+                {/* recycle bin */}
+                <TouchableOpacity
+                  onPress={() => router.push("/recycle-bin")}
+                  activeOpacity={0.8}
+                  className="flex-row items-center px-4 py-4"
+                >
+                  <View className="w-9 h-9 bg-orange-50 rounded-xl items-center justify-center mr-4">
+                    <MaterialCommunityIcons name="delete-empty" size={15} color="#fca5a5" />
+                  </View>
+                  <View className="flex-1">
+                    <View className="flex-row items-center" style={{ gap: 6 }}>
+                      <Text className="text-primaryText font-bold text-[14px]">
+                        Recycle Bin
+                      </Text>
+                      {!profile.isPremium && (
+                        <View className="bg-amber-400 px-1.5 py-0.5 rounded-md">
+                          <Text className="text-primaryText font-black text-[8px] uppercase tracking-widest">
+                            Pro
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text className="text-secondaryText text-[10px] font-bold mt-0.5">
+                      Manage deleted bills & khata 
                     </Text>
                   </View>
                   <Feather name="chevron-right" size={15} color="#7c3aed" />
