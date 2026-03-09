@@ -3,7 +3,7 @@ import { storageService } from '../services/storageService';
 
 const apiClient = axios.create({
   // Replace this with your actual computer's local IP address and port
-  baseURL: 'http://172.26.204.16:8080/api', 
+  baseURL: process.env.EXPO_PUBLIC_API_URL, 
   headers: {
     'Content-Type': 'application/json',
   },
