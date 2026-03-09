@@ -15,10 +15,23 @@ import paymentRoutes from './routes/payment.route.js';
 import analyticsRoutes from './routes/analytics.route.js';
 import subCategoryRoutes from './routes/subcategory.route.js';
 import recycleBinRoutes from './routes/recycleBin.route.js';
+import rateLimit from 'express-rate-limit';
+
+const pinLimiter = rateLimit({
+  windowMs: 2 * 60 * 1000,
+  max: 3,
+  handler: (req, res) => {
+    const retryAfter = Math.ceil(res.getHeader('Retry-After') / 60);
+    res.status(429).json({
+      success: false,
+      code: 'RATE_LIMITED',
+      message: `Too many attempts. Try again after ${retryAfter} minutes.`,
+    });
+  }
+});
 
 
 const app = express();
-
 // Global Middlewares
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8081'];
 app.use(cors({ origin: allowedOrigins }));// Allows your React Native app to communicate with this server
@@ -27,6 +40,8 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Mount Routes
 app.get('/api/health', (req, res) => { res.send("Server is running!")});
+app.use('/api/auth/staff/verify-otp', pinLimiter);
+app.use('/api/users/verify-pin', pinLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

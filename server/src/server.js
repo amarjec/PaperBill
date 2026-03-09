@@ -8,6 +8,7 @@ import connectDB from './config/db.js';
 connectDB();
 
 const PORT = process.env.PORT || 8000;
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8081'];
 
 // Create HTTP server wrapping the Express app
 const server = http.createServer(app);

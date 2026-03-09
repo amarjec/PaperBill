@@ -10,7 +10,7 @@ const userSchema = new Schema({
   address: { type: String, trim: true },
   business_type: [{ 
     type: String, 
-    enum: ['Hardware', 'Grocery', 'Electronics', 'Traders', 'General Store', 'Medical'] 
+    enum: ['Hardware', 'Grocery', 'Electronics', 'Traders', 'General Store', 'Medical', 'Other'] 
   }],
   
   has_inventory: { type: Boolean, default: false },

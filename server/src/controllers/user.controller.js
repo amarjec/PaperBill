@@ -60,7 +60,10 @@ export const verifyPin = async (req, res) => {
       return res.status(400).json({ success: false, message: 'PIN must be exactly 4 digits' });
     }
 
-    const userRecord = await User.findById(user.userId);
+    // Staff verify against their owner's PIN
+    const ownerId = user.role === 'Owner' ? user.userId : user.ownerId;
+    const userRecord = await User.findById(ownerId);
+
     if (!userRecord || !userRecord.secure_pin) {
       return res.status(404).json({ success: false, message: 'PIN not set. Please set a PIN first.' });
     }

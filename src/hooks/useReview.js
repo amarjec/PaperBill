@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Alert, Keyboard } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { billApi } from '../api/billApi';
@@ -102,19 +102,23 @@ export function useReview() {
   }, [setList]);
 
   // ── Product search (for "forgot to add" case) ─────────────────────────────
+  const catalogRef = useRef(null); // cache the full list
+
   const searchProducts = useCallback(async (term) => {
     if (!term.trim()) { setSearchResults([]); return; }
     setIsSearching(true);
     try {
-      const data = await productApi.getAll('all');
-      if (data.success) {
-        const lower = term.toLowerCase();
-        setSearchResults(
-          (data.products || []).filter(p =>
-            p.item_name?.toLowerCase().includes(lower)
-          ).slice(0, 20)
-        );
+      // Fetch once and cache
+      if (!catalogRef.current) {
+        const data = await productApi.getAll('all');
+        catalogRef.current = data.success ? (data.products || []) : [];
       }
+      const lower = term.toLowerCase();
+      setSearchResults(
+        catalogRef.current
+          .filter(p => p.item_name?.toLowerCase().includes(lower))
+          .slice(0, 20)
+      );
     } catch {
       Alert.alert('Error', 'Could not search products.');
     } finally {

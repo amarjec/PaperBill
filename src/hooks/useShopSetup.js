@@ -35,8 +35,16 @@ export function useShopSetup() {
     const { shopName, address, number, pin, businessTypes } = form;
 
     // Validation
-    if (!shopName || !address || !number || pin.length !== 4 || businessTypes.length === 0) {
+    if (!shopName || !address || !number || !pin || businessTypes.length === 0) {
       Alert.alert('Details Missing', 'Please fill all fields and select at least one business type.');
+      return;
+    }
+    if (pin.length !== 4) {
+      Alert.alert('Invalid PIN', 'PIN must be exactly 4 digits.');
+      return;
+    }
+    if (number.length !== 10) {
+      Alert.alert('Invalid Phone Number', 'Phone number must be exactly 10 digits.');
       return;
     }
 

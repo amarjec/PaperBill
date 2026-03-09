@@ -179,6 +179,7 @@ export default function ReviewScreen() {
   } = useReview();
 
   const { can } = usePermission();
+  const debounceRef = useRef(null);
 
   const [showAdjustments, setShowAdjustments] = useState(false);
   const [submitType, setSubmitType] = useState(null); // Tracks 'estimate' or 'bill' to show loader on correct button
@@ -557,7 +558,11 @@ export default function ReviewScreen() {
                 placeholder="Type product name..."
                 placeholderTextColor="#bfb5a8"
                 value={searchTerm}
-                onChangeText={(t) => { setSearchTerm(t); searchProducts(t); }}
+                onChangeText={(t) => {
+                  setSearchTerm(t);
+                  clearTimeout(debounceRef.current);
+                  debounceRef.current = setTimeout(() => searchProducts(t), 300);
+                }}
                 className="flex-1 ml-3 text-primaryText font-bold text-sm"
               />
               {isSearching && <ActivityIndicator size="small" color="#bfb5a8" />}

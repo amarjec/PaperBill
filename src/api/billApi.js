@@ -6,7 +6,7 @@ export const billApi = {
     return data;
   },
   getAll: async () => {
-    const { data } = await apiClient.get('/bills');
+    const { data } = await apiClient.get('/bills?limit=500');
     return data;
   },
   getById: async (id) => {

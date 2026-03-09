@@ -65,6 +65,7 @@ export const createBill = async (req, res) => {
       total_amount,
       amount_paid: finalAmountPaid,
       created_by,
+      created_by_id: user.userId, 
       brand_converted_by: brand_converted_by || null,
     });
 
@@ -105,7 +106,7 @@ export const getBills = async (req, res) => {
 
     // 2. 🚨 STAFF GUARD: Only return bills created by this specific staff member
     if (user.role === "Staff") {
-      query.created_by = user.name;
+      query.created_by_id = user.userId;
     }
 
     const [bills, total] = await Promise.all([
@@ -251,9 +252,9 @@ export const softDeleteBill = async (req, res) => {
     if (!bill.is_estimate && bill.customer_id) {
       const debtToReverse = bill.total_amount - (bill.amount_paid || 0);
       if (debtToReverse > 0) {
-        await Customer.findByIdAndUpdate(bill.customer_id, {
-          $inc: { total_debt: -debtToReverse },
-        });
+        await Customer.findByIdAndUpdate(bill.customer_id, [
+          { $set: { total_debt: { $max: [{ $subtract: ['$total_debt', debtToReverse] }, 0] } } }
+        ]);
       }
 
       // Reverse any payment transactions recorded against this bill

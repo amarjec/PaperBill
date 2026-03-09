@@ -166,8 +166,19 @@ export function useBillDetail(billId) {
         setPinModalVisible(false);
         setPinInput("");
       }
-    } catch {
-      Alert.alert("Access Denied", "Incorrect PIN");
+    } catch (error) {
+      const status = error?.response?.status;
+      const message = error?.response?.data?.message;
+
+      if (status === 429) {
+        // Rate limited — show the time remaining message and close the modal
+        Alert.alert('Too Many Attempts', message || 'Please try again later.');
+        setPinModalVisible(false);
+        setPinInput('');
+      } else {
+        // Genuinely wrong PIN
+        Alert.alert('Access Denied', 'Incorrect PIN');
+      }
     } finally {
       setIsVerifyingPin(false);
     }
