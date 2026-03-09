@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import Staff from '../models/Staff.js';
+import bcrypt from 'bcryptjs';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -59,7 +60,6 @@ export const verifyStaffOtp = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account suspended. Contact the owner.' });
     }
 
-    const bcrypt = await import('bcryptjs');
     const isPinValid = await bcrypt.default.compare(otp, staff.assigned_pin || '');
     if (!isPinValid) {
       return res.status(401).json({ success: false, message: 'Invalid OTP' });
