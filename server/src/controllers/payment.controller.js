@@ -14,6 +14,12 @@ const plans = {
   }
 };
 
+Object.entries(plans).forEach(([key, val]) => {
+  if (isNaN(val.amount) || isNaN(val.days) || val.amount <= 0 || val.days <= 0) {
+    throw new Error(`Invalid plan config for "${key}". Check BILLING env vars.`);
+  }
+});
+
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_SECRET, 
@@ -98,7 +104,13 @@ export const verifyPayment = async (req, res) => {
     
     await user.save();
 
-    res.status(200).json({ success: true, message: "Premium Activated!", user });
+    // Select a clean object before sending
+    const { secure_pin, ...safeUser } = user.toObject();
+    res.status(200).json({ success: true, message: "Premium Activated!", user: safeUser });
+
+    // Also fix the "Already Activated" early return:
+    const { secure_pin: _, ...safeUserEarly } = user.toObject();
+    return res.status(200).json({ success: true, message: "Already Activated", user: safeUserEarly });
 
   } catch (error) {
     console.error("Verify Error:", error);
