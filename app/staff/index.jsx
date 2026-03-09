@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useStaff } from '@/src/hooks/useStaff';
+import PremiumLock from '@/src/components/PremiumLock';
 
 // ─── Reusable permission row ───────────────────────────────────────────────────
 const PermRow = ({ label, description, value, onValueChange, disabled = false }) => (
@@ -106,7 +107,7 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
 };
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
-export default function StaffManagementScreen() {
+function StaffManagementScreen() {
   const router = useRouter();
   const {
     staffList, loading, isProcessing,
@@ -343,5 +344,17 @@ export default function StaffManagementScreen() {
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
+  );
+}
+
+export default function StaffManagement() {
+  return (
+    <PremiumLock
+    featureName="Staff Management"
+    description="Add Staff with limited permission to delegate your work"
+    icon="delete-empty"
+    >
+      <StaffManagementScreen />
+    </PremiumLock>
   );
 }

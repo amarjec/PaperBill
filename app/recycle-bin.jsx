@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useRecycleBin } from '@/src/hooks/useRecycleBin';
+import PremiumLock from '@/src/components/PremiumLock';
 
 // ─── Type config ──────────────────────────────────────────────────────────────
 const TYPE_CONFIG = {
@@ -183,7 +184,7 @@ const EmptyBin = () => (
 );
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
-export default function RecycleBinScreen() {
+function RecycleBinScreen() {
   const router = useRouter();
   const {
     items, loading, isProcessing,
@@ -369,4 +370,17 @@ export default function RecycleBinScreen() {
 
     </SafeAreaView>
   );
+}
+
+export default function RecycleBin() {
+  return (
+    <PremiumLock
+    featureName="Recycle Bin"
+    description="Restore the deleted khata & bills"
+    icon="delete-empty"
+    >
+      <RecycleBinScreen />
+    </PremiumLock>
+
+  )
 }

@@ -1,6 +1,6 @@
 import express from 'express';
 import { protect } from '../middlewares/auth.middleware.js';
-import { ownerOnly } from '../middlewares/rbac.middleware.js';
+import { ownerOnly, premiumOnly } from '../middlewares/rbac.middleware.js';
 import {
   getRecycleBin,
   restoreItems,
@@ -11,7 +11,7 @@ import {
 const router = express.Router();
 
 // All recycle bin routes: must be logged in AND must be Owner
-router.use(protect, ownerOnly);
+router.use(protect, premiumOnly, ownerOnly);
 
 router.get('/',                 getRecycleBin);
 router.post('/restore',         restoreItems);

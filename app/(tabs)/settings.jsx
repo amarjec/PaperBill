@@ -226,7 +226,7 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
       >
         {/* ════ OWNER ══════════════════════════════════════════════════════════ */}
-        {!isStaff && (
+        {(
           <>
             {/* My Shop — profile + analytics + bills grouped */}
             <View className="mb-4 px-5">
@@ -253,7 +253,8 @@ export default function ProfileScreen() {
                 />
                 <Sep />
                 {/* Analytics row — purple tinted */}
-                <TouchableOpacity
+               {!isStaff && (
+                 <TouchableOpacity
                   onPress={() => router.push("/analytics")}
                   activeOpacity={0.8}
                   className="flex-row items-center px-4 py-4 bg-purple-50"
@@ -280,8 +281,10 @@ export default function ProfileScreen() {
                   </View>
                   <Feather name="chevron-right" size={15} color="#7c3aed" />
                 </TouchableOpacity>
+               )}
                 <Sep />
                 {/* recycle bin */}
+                {!isStaff && (
                 <TouchableOpacity
                   onPress={() => router.push("/recycle-bin")}
                   activeOpacity={0.8}
@@ -309,10 +312,12 @@ export default function ProfileScreen() {
                   </View>
                   <Feather name="chevron-right" size={15} color="#7c3aed" />
                 </TouchableOpacity>
+                )}
               
               </View>
             </View>
 
+            {!isStaff && (
             <Group label="Management">
               <Row
                 icon="users"
@@ -341,7 +346,7 @@ export default function ProfileScreen() {
                 sub="Quick inventory import"
                 onPress={() => router.push("/setup-inventory")}
               />
-            </Group>
+            </Group>)}
 
             <Group label="About">
               <Row icon="shield" label="Privacy Policy" onPress={() => {router.push("/legal")}} />
@@ -351,53 +356,9 @@ export default function ProfileScreen() {
                 label="Help & Support"
                 onPress={() => {router.push("/support")}}
               />
-            </Group>
-          </>
-        )}
 
-        {/* ════ STAFF ══════════════════════════════════════════════════════════ */}
-        {/* {isStaff && (
-          <>
-            <StaffCard profile={profile} />
-
-            <Group label="Quick Access">
-              <Row
-                icon="file-text"
-                iconBg="bg-blue-50"
-                iconColor="#2563eb"
-                label="Bills"
-                sub="View your recent bills"
-                onPress={() => router.push("/(tabs)/history")}
-              />
               <Sep />
-              <Row
-                icon="book"
-                iconBg="bg-teal-50"
-                iconColor="#0d9488"
-                label="Customers & Khata"
-                sub="Customer list & outstanding balance"
-                onPress={() => router.push("/customer")}
-              />
-            </Group>
-          </>
-        )} */}
-
-        {/* ── Account actions — both owner & staff ────────────────────────── */}
-        <View className="px-5">
-          <Text className="text-secondaryText text-[10px] font-black uppercase tracking-widest mb-2 ml-0.5">
-            Account
-          </Text>
-          <View
-            className="bg-white rounded-[22px] border border-card overflow-hidden"
-            style={{
-              shadowColor: "#c8c0b4",
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 2,
-            }}
-          >
-            <TouchableOpacity
+               <TouchableOpacity
               onPress={handleLogout}
               activeOpacity={0.7}
               className="flex-row items-center px-4 py-3.5"
@@ -410,30 +371,10 @@ export default function ProfileScreen() {
               </Text>
               <Feather name="chevron-right" size={15} color="#c8c0b4" />
             </TouchableOpacity>
-            {!isStaff && (
-              <>
-                <Sep />
-                <TouchableOpacity
-                  onPress={handleDeleteAccount}
-                  activeOpacity={0.7}
-                  className="flex-row items-center px-4 py-3.5"
-                >
-                  <View className="w-9 h-9 bg-red-50 rounded-xl items-center justify-center mr-4">
-                    <Feather name="trash-2" size={15} color="#ef4444" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-red-500 font-bold text-[14px]">
-                      Delete Account
-                    </Text>
-                    <Text className="text-secondaryText text-[10px] font-bold mt-0.5">
-                      Permanently removes your shop & data
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </View>
+
+            </Group>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
