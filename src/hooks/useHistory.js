@@ -126,7 +126,7 @@ export function useHistory() {
       count: filteredData.length,
       total: filteredData.reduce((s, b) => s + (b.total_amount || 0), 0),
       collected: filteredData.reduce((s, b) => s + (b.amount_paid || 0), 0),
-      udhaar: filteredData.reduce((s, b) => s + (b.udhaar_amount || 0), 0),
+      udhaar: filteredData.reduce((s, b) => s + Math.max(0, (b.total_amount || 0) - (b.amount_paid || 0)), 0),
       paidCount: paid.length,
       unpaidCount: unpaid.length,
       partialCount: partial.length,

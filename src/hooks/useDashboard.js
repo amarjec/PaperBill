@@ -17,12 +17,16 @@ export function useDashboard() {
 
       // Get today's date range for the summary card
       const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1) // 1st of current month
-        .toISOString();
-      const endDate = new Date(now.setHours(23, 59, 59, 999))
-        .toISOString();
+      const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      startDate.setHours(0, 0, 0, 0);
 
-      const res = await analyticsApi.getDashboard(startDate, endDate);
+      const endDate = new Date(); // fresh Date, NOT mutating now
+      endDate.setHours(23, 59, 59, 999);
+
+      const res = await analyticsApi.getDashboard(
+        encodeURIComponent(startDate.toISOString()),
+        encodeURIComponent(endDate.toISOString()),
+      );
 
       if (res.success) {
         // Map the actual backend response shape to our state

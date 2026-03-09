@@ -7,7 +7,7 @@ export const addStaff = async (req, res) => {
     const { name, phone_number, assigned_pin, permissions } = body;
     const owner_id = user.userId;
 
-    if (!name || !phone_number) {
+    if (!name || !phone_number || phone_number.length !== 10) {
       return res.status(400).json({ success: false, message: "Name and phone number are required." });
     }
 
@@ -47,9 +47,12 @@ export const getStaffMembers = async (req, res) => {
 export const updateStaffPermission = async (req, res) => {
   try {
     const { body, params, user } = req;
-    const { permissions, status, assigned_pin } = body;
+    const { permissions, status, assigned_pin, name, phone_number } = body;
 
     const updateFields = { permissions, status };
+
+    if (name) updateFields.name = name;
+    if (phone_number) updateFields.phone_number = phone_number;
 
     if (assigned_pin) {
       updateFields.assigned_pin = await bcrypt.hash(assigned_pin, 10);

@@ -20,7 +20,8 @@ import recycleBinRoutes from './routes/recycleBin.route.js';
 const app = express();
 
 // Global Middlewares
-app.use(cors()); // Allows your React Native app to communicate with this server
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8081'];
+app.use(cors({ origin: allowedOrigins }));// Allows your React Native app to communicate with this server
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 

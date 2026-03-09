@@ -19,7 +19,7 @@ export function usePermission() {
 
   const can = (module, action) => {
     if (!user) return false;
-    if (user.address) return true;
+    if (!user.owner_id) return true;
     return !!user.permissions?.[module]?.[action];
   };
 

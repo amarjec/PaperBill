@@ -149,7 +149,7 @@ export default function SubCategoryScreen() {
         )}
 
         {/* Add new subcategory button */}
-        {can('subcategory', 'create') &&
+        {can('subCategory', 'create') &&
         <TouchableOpacity
           onPress={openCreateModal}
           className="bg-primaryText p-3 rounded-2xl"
@@ -258,7 +258,7 @@ export default function SubCategoryScreen() {
       )}
 
       {/* ── Action Modal (Long Press) ─────────────────────────────────────── */}
-      {(can('subcategory', 'update') || can('subcategory', 'delete')) &&
+      {(can('subCategory', 'update') || can('subCategory', 'delete')) &&
       <Modal visible={actionModalVisible} transparent animationType="fade">
         <TouchableOpacity
           activeOpacity={1}
@@ -270,7 +270,7 @@ export default function SubCategoryScreen() {
               Manage "{selectedSub?.name || ''}"
             </Text>
 
-            {can('subcategory', 'update') &&
+            {can('subCategory', 'update') &&
             <TouchableOpacity
               onPress={openEditModal}
               className="bg-white p-5 rounded-2xl flex-row items-center mb-3 shadow-sm border border-card"
@@ -279,7 +279,7 @@ export default function SubCategoryScreen() {
               <Text className="text-primaryText font-black text-lg ml-4">Rename Group</Text>
             </TouchableOpacity>}
 
-            {can('subcategory', 'delete') &&
+            {can('subCategory', 'delete') &&
             <TouchableOpacity
               onPress={confirmDelete}
               className="bg-red-50 p-5 rounded-2xl flex-row items-center mb-6 shadow-sm border border-red-100"

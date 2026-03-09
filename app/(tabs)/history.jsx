@@ -34,7 +34,7 @@ const DATE_FILTERS = [
 const PAY_FILTERS = [
   { key: 'all',            label: 'All',     activeBg: 'bg-primaryText',  activeText: 'text-accent',    dot: null },
   { key: 'Paid',           label: 'Paid',    activeBg: 'bg-green-600',    activeText: 'text-white',     dot: 'bg-green-500' },
-  { key: 'Partially',      label: 'Partial', activeBg: 'bg-orange-500',   activeText: 'text-white',     dot: 'bg-orange-400' },
+  { key: 'Partial', label: 'Partial', activeBg: 'bg-orange-500', activeText: 'text-white', dot: 'bg-orange-400' },
   { key: 'Unpaid',         label: 'Unpaid',  activeBg: 'bg-red-500',      activeText: 'text-white',     dot: 'bg-red-400' },
 ];
 

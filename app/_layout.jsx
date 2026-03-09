@@ -68,6 +68,11 @@ function RootNavigation() {
       <Stack.Screen name="bill/[id]" />
       <Stack.Screen name="khata/[id]" />
       <Stack.Screen name="staff/index" />
+      <Stack.Screen name="account" />
+      <Stack.Screen name="analytics" />
+      <Stack.Screen name="recycle-bin" />
+      <Stack.Screen name="legal" />
+      <Stack.Screen name="support" />
     </Stack>
   );
 }

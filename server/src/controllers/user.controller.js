@@ -1,5 +1,11 @@
 import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import Bill from '../models/Bill.js';
+import Customer from '../models/Customer.js';
+import Product from '../models/Product.js';
+import Category from '../models/Category.js';
+import Subcategory from '../models/Subcategory.js';
+import Staff from '../models/Staff.js';
 
 export const getUserProfile = async (req, res) => {
   try {
@@ -73,12 +79,20 @@ export const verifyPin = async (req, res) => {
 export const deleteAccount = async (req, res) => {
   try {
     const { user } = req;
-    await User.findByIdAndUpdate(user.userId, { 
-      device_id: null, 
-      is_deleted: true,
-      deleted_at: new Date()
-    });
-    
+    const owner_id = user.userId;
+    const now = new Date();
+    const opts = { is_deleted: true, deleted_at: now };
+
+    await Promise.all([
+      Bill.updateMany({ owner_id }, opts),
+      Customer.updateMany({ owner_id }, opts),
+      Product.updateMany({ owner_id }, opts),
+      Category.updateMany({ owner_id }, opts),
+      Subcategory.updateMany({ owner_id }, opts),
+      Staff.updateMany({ owner_id }, { ...opts, device_id: null }),
+    ]);
+
+    await User.findByIdAndUpdate(owner_id, { device_id: null, ...opts });
     res.status(200).json({ success: true, message: 'Account deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

@@ -392,7 +392,7 @@ export default function ReviewScreen() {
         </View>
 
         {/* ── 5. Payment card (Hidden if walk-in or missing khata permission) ── */}
-        {can('khata', 'create') && !isWalkIn && (
+        {can('khata', 'update') && !isWalkIn && (
           <View className="px-5 mb-4">
             <View className="bg-white rounded-[22px] px-5 py-3 border border-card"
               style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
