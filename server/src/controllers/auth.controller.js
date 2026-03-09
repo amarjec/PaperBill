@@ -60,7 +60,7 @@ export const verifyStaffOtp = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Account suspended. Contact the owner.' });
     }
 
-    const isPinValid = await bcrypt.default.compare(otp, staff.assigned_pin || '');
+    const isPinValid = await bcrypt.compare(otp, staff.assigned_pin || '');
     if (!isPinValid) {
       return res.status(401).json({ success: false, message: 'Invalid OTP' });
     }
