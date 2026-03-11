@@ -1,48 +1,90 @@
-import Bill from '../models/Bill.js';
-import Customer from '../models/Customer.js';
-import Product from '../models/Product.js';
+import Bill from "../models/Bill.js";
+import Customer from "../models/Customer.js";
+import Product from "../models/Product.js";
+import KhataTransaction from "../models/KhataTransaction.js";
+import { generateBillNumber } from "../utils/generateBillNumber.js";
+
+const getOwnerId = (user) =>
+  user.role === "Owner" ? user.userId : user.ownerId;
+
+const deriveStatus = (isEstimate, amountPaid, totalAmount) => {
+  if (isEstimate) return "Unpaid";
+  if (amountPaid >= totalAmount) return "Paid";
+  if (amountPaid > 0) return "Partial";
+  return "Unpaid";
+};
+
+const calcTotal = (items, extraFare, discount) => {
+  const itemsTotal = items.reduce(
+    (sum, item) => sum + Number(item.sale_price) * Number(item.quantity),
+    0,
+  );
+  return Math.max(0, itemsTotal + Number(extraFare) - Number(discount));
+};
 
 export const createBill = async (req, res) => {
   try {
-    const { customer_id, items, is_estimate, price_mode, extra_fare, discount, amount_paid, brand_converted_by } = req.body;
-    const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
-    const created_by = req.user.name || 'Staff Member'; // Extracted from decoded JWT
-
-    // 1. Calculate totals
-    let itemsTotal = 0;
-    items.forEach(item => {
-      itemsTotal += (item.sale_price * item.quantity);
-    });
-    const total_amount = itemsTotal + Number(extra_fare) - Number(discount);
-    
-    // 2. Determine Status
-    let status = 'Unpaid';
-    if (amount_paid >= total_amount) status = 'Paid';
-    else if (amount_paid > 0) status = 'Partially Paid';
-
-    // 3. Create the Bill Snapshot
-    const bill = await Bill.create({
-      owner_id,
+    const { body, user } = req;
+    const {
       customer_id,
-      bill_number: `INV-${Date.now()}`,
+      items,
       is_estimate,
       price_mode,
+      extra_fare = 0,
+      discount = 0,
+      amount_paid = 0,
+      brand_converted_by,
+    } = body;
+
+    const owner_id = getOwnerId(user);
+    const created_by = user.name;
+
+    if (!items || items.length === 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Bill must have at least one item." });
+    }
+
+    const total_amount = calcTotal(items, extra_fare, discount);
+    const finalAmountPaid = is_estimate
+      ? 0
+      : Math.min(Number(amount_paid), total_amount);
+    const status = deriveStatus(is_estimate, finalAmountPaid, total_amount);
+    const bill_number = await generateBillNumber(owner_id);
+
+    const bill = await Bill.create({
+      owner_id,
+      customer_id: customer_id || null,
+      bill_number,
+      is_estimate,
+      price_mode: price_mode || "Retail",
       status,
       items,
-      extra_fare,
-      discount,
+      extra_fare: Number(extra_fare),
+      discount: Number(discount),
       total_amount,
-      amount_paid,
+      amount_paid: finalAmountPaid,
       created_by,
-      brand_converted_by
+      created_by_id: user.userId, 
+      brand_converted_by: brand_converted_by || null,
     });
 
-    // 4. Update Khata (Ledger) if it's NOT an estimate
-    if (!is_estimate && customer_id && total_amount > amount_paid) {
-      const debtAmount = total_amount - amount_paid;
-      await Customer.findByIdAndUpdate(customer_id, {
-        $inc: { total_debt: debtAmount }
-      });
+    if (!is_estimate && customer_id) {
+      const debtAmount = total_amount - finalAmountPaid;
+      if (debtAmount > 0) {
+        await Customer.findByIdAndUpdate(customer_id, {
+          $inc: { total_debt: debtAmount },
+        });
+      }
+      if (finalAmountPaid > 0) {
+        await KhataTransaction.create({
+          owner_id,
+          customer_id,
+          amount: finalAmountPaid,
+          type: "Payment",
+          received_by: created_by,
+        });
+      }
     }
 
     res.status(201).json({ success: true, bill });
@@ -51,74 +93,133 @@ export const createBill = async (req, res) => {
   }
 };
 
-// Get all bills for the shop
 export const getBills = async (req, res) => {
   try {
-    const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
-    
-    // Fetch bills, sorted by newest first, and populate customer name
-    const bills = await Bill.find({ owner_id, is_deleted: false })
-      .populate('customer_id', 'name phone')
-      .sort({ createdAt: -1 });
-      
-    res.status(200).json({ success: true, bills });
+    const { user } = req;
+    const owner_id = getOwnerId(user);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const skip = (page - 1) * limit;
+
+    // 1. Base query for the shop
+    const query = { owner_id, is_deleted: false };
+
+    // 2. 🚨 STAFF GUARD: Only return bills created by this specific staff member
+    if (user.role === "Staff") {
+      query.created_by_id = user.userId;
+    }
+
+    const [bills, total] = await Promise.all([
+      Bill.find(query)
+        .populate("customer_id", "name phone")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Bill.countDocuments(query),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      bills,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// Get a single bill by ID
 export const getBillById = async (req, res) => {
   try {
-    const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
-    
-    const bill = await Bill.findOne({ _id: req.params.id, owner_id, is_deleted: false })
-      .populate('customer_id', 'name phone address');
-      
-    if (!bill) {
-      return res.status(404).json({ success: false, message: 'Bill not found' });
-    }
-    
+    const { params, user } = req;
+    const owner_id = getOwnerId(user);
+    const bill = await Bill.findOne({
+      _id: params.id,
+      owner_id,
+      is_deleted: false,
+    }).populate("customer_id", "name phone address");
+
+    if (!bill)
+      return res
+        .status(404)
+        .json({ success: false, message: "Bill not found." });
     res.status(200).json({ success: true, bill });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// Update a bill (e.g., updating amount paid or status)
 export const updateBill = async (req, res) => {
   try {
-    const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
-    
-    // 1. Find the original bill to calculate Khata differences
-    const originalBill = await Bill.findOne({ _id: req.params.id, owner_id, is_deleted: false });
-    if (!originalBill) return res.status(404).json({ success: false, message: 'Bill not found' });
+    const { body, params, user } = req;
+    const owner_id = getOwnerId(user);
+    const { items, extra_fare, discount, amount_paid } = body;
 
-    // 2. Calculate old debt vs new debt
-    const oldDebt = originalBill.total_amount - originalBill.amount_paid;
-    
-    // Assume req.body might contain new totals, otherwise fallback to old ones
-    const newTotalAmount = req.body.total_amount !== undefined ? req.body.total_amount : originalBill.total_amount;
-    const newAmountPaid = req.body.amount_paid !== undefined ? req.body.amount_paid : originalBill.amount_paid;
-    const newDebt = newTotalAmount - newAmountPaid;
-    
-    const debtDifference = newDebt - oldDebt; // How much the debt changed
+    const originalBill = await Bill.findOne({
+      _id: params.id,
+      owner_id,
+      is_deleted: false,
+    });
+    if (!originalBill)
+      return res
+        .status(404)
+        .json({ success: false, message: "Bill not found." });
 
-    // 3. Update the bill
-    const updatedBill = await Bill.findOneAndUpdate(
-      { _id: req.params.id, owner_id },
-      { 
-        ...req.body, 
-        updated_by: req.user.name 
-      },
-      { new: true }
+    const newItems = items ?? originalBill.items;
+    const newExtraFare =
+      extra_fare !== undefined ? Number(extra_fare) : originalBill.extra_fare;
+    const newDiscount =
+      discount !== undefined ? Number(discount) : originalBill.discount;
+    const newTotalAmount = calcTotal(newItems, newExtraFare, newDiscount);
+
+    const newAmountPaid = !originalBill.is_estimate
+      ? amount_paid !== undefined
+        ? Math.min(Number(amount_paid), newTotalAmount)
+        : Math.min(originalBill.amount_paid, newTotalAmount)
+      : 0;
+
+    const newStatus = deriveStatus(
+      originalBill.is_estimate,
+      newAmountPaid,
+      newTotalAmount,
     );
 
-    // 4. Apply the Debt Difference to the Customer's Khata (if it's not an estimate)
-    if (!updatedBill.is_estimate && originalBill.customer_id && debtDifference !== 0) {
-      await Customer.findByIdAndUpdate(originalBill.customer_id, {
-        $inc: { total_debt: debtDifference }
-      });
+    const updatedBill = await Bill.findOneAndUpdate(
+      { _id: params.id, owner_id },
+      {
+        items: newItems,
+        extra_fare: newExtraFare,
+        discount: newDiscount,
+        total_amount: newTotalAmount,
+        amount_paid: newAmountPaid,
+        status: newStatus,
+        updated_by: user.name,
+      },
+      { new: true },
+    );
+
+    if (!originalBill.is_estimate && originalBill.customer_id) {
+      const oldDebt =
+        originalBill.total_amount - (originalBill.amount_paid || 0);
+      const newDebt = newTotalAmount - newAmountPaid;
+      const diff = newDebt - oldDebt;
+
+      if (diff !== 0) {
+        await Customer.findByIdAndUpdate(originalBill.customer_id, {
+          $inc: { total_debt: diff },
+        });
+      }
+
+      // Record a KhataTransaction whenever the paid amount increases
+      const paymentIncrease = newAmountPaid - (originalBill.amount_paid || 0);
+      if (paymentIncrease > 0) {
+        await KhataTransaction.create({
+          owner_id,
+          customer_id: originalBill.customer_id,
+          amount: paymentIncrease,
+          type: "Payment",
+          received_by: user.name,
+        });
+      }
     }
 
     res.status(200).json({ success: true, bill: updatedBill });
@@ -129,123 +230,234 @@ export const updateBill = async (req, res) => {
 
 export const softDeleteBill = async (req, res) => {
   try {
-    const { id } = req.params;
-    const deleted_by = req.user.name;
+    const { params, user } = req;
+    const owner_id = getOwnerId(user);
 
-    const bill = await Bill.findByIdAndUpdate(id, {
+    const bill = await Bill.findOne({
+      _id: params.id,
+      owner_id,
+      is_deleted: false,
+    });
+    if (!bill)
+      return res
+        .status(404)
+        .json({ success: false, message: "Bill not found." });
+
+    await Bill.findByIdAndUpdate(params.id, {
       is_deleted: true,
-      deleted_by,
-      deleted_at: new Date()
+      deleted_by: user.name,
+      deleted_at: new Date(),
     });
 
-    // Optional: Reverse Khata debt if a bill is deleted
-    if (!bill.is_estimate && bill.status !== 'Paid' && bill.customer_id) {
-      const debtAmount = bill.total_amount - bill.amount_paid;
-      await Customer.findByIdAndUpdate(bill.customer_id, {
-        $inc: { total_debt: -debtAmount }
-      });
+    if (!bill.is_estimate && bill.customer_id) {
+      const debtToReverse = bill.total_amount - (bill.amount_paid || 0);
+      if (debtToReverse > 0) {
+        await Customer.findByIdAndUpdate(bill.customer_id, [
+          { $set: { total_debt: { $max: [{ $subtract: ['$total_debt', debtToReverse] }, 0] } } }
+        ]);
+      }
+
+      // Reverse any payment transactions recorded against this bill
+      // by creating a corrective Credit entry so the ledger stays balanced
+      if ((bill.amount_paid || 0) > 0) {
+        await KhataTransaction.create({
+          owner_id,
+          customer_id: bill.customer_id,
+          amount: bill.amount_paid,
+          type: "Credit", // reversal — offsets the original Payment entry
+          received_by: user.name,
+        });
+      }
     }
 
-    res.status(200).json({ success: true, message: 'Bill deleted successfully' });
+    res
+      .status(200)
+      .json({ success: true, message: "Bill deleted successfully." });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// brand wise price conversion
 export const convertBillBrand = async (req, res) => {
   try {
-    const owner_id = req.user.role === 'Owner' ? req.user.userId : req.user.ownerId;
-    const { target_brand } = req.body; 
-    const billId = req.params.id;
+    const { body, params, user } = req;
+    const owner_id = getOwnerId(user);
+    const { target_brand } = body;
 
-    // 1. Fetch the bill
-    const bill = await Bill.findOne({ _id: billId, owner_id, is_deleted: false });
-    if (!bill) return res.status(404).json({ success: false, message: 'Bill not found' });
+    if (!target_brand) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Target brand is required." });
+    }
 
-    // Store the old debt to recalculate Khata later
-    const oldDebt = bill.total_amount - bill.amount_paid;
+    const bill = await Bill.findOne({
+      _id: params.id,
+      owner_id,
+      is_deleted: false,
+    });
+    if (!bill)
+      return res
+        .status(404)
+        .json({ success: false, message: "Bill not found." });
 
-    // 2. Fetch all products referenced in this bill in one go (for performance)
-    const productIds = bill.items.map(item => item.product_id);
+    // FIX: Capture debt values BEFORE any mutation on the bill object
+    const oldAmountPaid = bill.amount_paid || 0;
+    const oldDebt = bill.total_amount - oldAmountPaid;
+
+    const productIds = bill.items
+      .map((item) => item.product_id)
+      .filter(Boolean);
     const products = await Product.find({ _id: { $in: productIds }, owner_id });
-    
-    // Create a dictionary of products for instant lookup
-    const productMap = {};
-    products.forEach(p => { productMap[p._id.toString()] = p; });
+    const productMap = Object.fromEntries(
+      products.map((p) => [p._id.toString(), p]),
+    );
 
     let newItemsTotal = 0;
-
-    // 3. Loop through bill items and apply the Brand Switching Logic
-    const updatedItems = bill.items.map(item => {
-      const product = productMap[item.product_id.toString()];
-      
-      // If product was deleted from DB, we keep the item exactly as it was on the bill
+    const updatedItems = bill.items.map((item) => {
+      const product = productMap[item.product_id?.toString()];
       if (!product) {
-        newItemsTotal += (item.sale_price * item.quantity);
-        return item; 
+        newItemsTotal += item.sale_price * item.quantity;
+        return item;
       }
 
-      // Look for the target brand in the product's alternate_brands array
-      const brandData = product.alternate_brands.find(
-        b => b.brand_name.toLowerCase() === target_brand.toLowerCase()
+      const brandData = product.alternate_brands?.find(
+        (b) => b.brand_name.toLowerCase() === target_brand.toLowerCase(),
       );
+      const isFallback = !brandData;
+      const newSalePrice = brandData
+        ? bill.price_mode === "Wholesale"
+          ? brandData.wholesale_price
+          : brandData.retail_price
+        : bill.price_mode === "Wholesale"
+          ? product.wholesale_price
+          : product.retail_price;
+      const newPurchasePrice = brandData
+        ? brandData.purchase_price
+        : product.purchase_price;
 
-      let newSalePrice = item.sale_price;
-      let newPurchasePrice = item.purchase_price;
-      let isFallback = false;
-
-      if (brandData) {
-        // Target Brand Found! Apply its specific prices based on the Bill's price_mode
-        newSalePrice = bill.price_mode === 'Wholesale' ? brandData.wholesale_price : brandData.retail_price;
-        newPurchasePrice = brandData.purchase_price;
-      } else {
-        // Missing Price Fallback! Use the product's default prices
-        newSalePrice = bill.price_mode === 'Wholesale' ? product.wholesale_price : product.retail_price;
-        newPurchasePrice = product.purchase_price;
-        isFallback = true;
-      }
-
-      newItemsTotal += (newSalePrice * item.quantity);
-
-      // Return the updated item snapshot
+      newItemsTotal += newSalePrice * item.quantity;
       return {
         ...item.toObject(),
         sale_price: newSalePrice,
         purchase_price: newPurchasePrice,
-        brand_applied: brandData ? brandData.brand_name : product.default_brand_name,
-        is_fallback_price: isFallback
+        brand_applied: brandData
+          ? brandData.brand_name
+          : product.default_brand_name,
+        is_fallback_price: isFallback,
       };
     });
 
-    // 4. Recalculate the Final Bill Total
-    const newTotalAmount = newItemsTotal + Number(bill.extra_fare) - Number(bill.discount);
-    
-    // 5. Update the Bill in the database
+    const newTotalAmount = Math.max(
+      0,
+      newItemsTotal + Number(bill.extra_fare) - Number(bill.discount),
+    );
+
     bill.items = updatedItems;
     bill.total_amount = newTotalAmount;
-    bill.brand_converted_by = req.user.name; // Audit trail: Who pushed the button?
-    
-    // Update status if the new total changed how much is owed
-    if (bill.amount_paid >= newTotalAmount) bill.status = 'Paid';
-    else if (bill.amount_paid > 0) bill.status = 'Partially Paid';
-    else bill.status = 'Unpaid';
+    bill.brand_converted_by = user.name;
+    // FIX: Use captured oldAmountPaid — not bill.amount_paid which may already be mutated in memory
+    bill.status = deriveStatus(bill.is_estimate, oldAmountPaid, newTotalAmount);
 
     await bill.save();
 
-    // 6. Handle Khata Synchronization
     if (!bill.is_estimate && bill.customer_id) {
-      const newDebt = newTotalAmount - bill.amount_paid;
-      const debtDifference = newDebt - oldDebt;
-      
-      if (debtDifference !== 0) {
+      const newDebt = newTotalAmount - oldAmountPaid;
+      const diff = newDebt - oldDebt;
+      if (diff !== 0) {
         await Customer.findByIdAndUpdate(bill.customer_id, {
-          $inc: { total_debt: debtDifference }
+          $inc: { total_debt: diff },
         });
       }
     }
 
-    res.status(200).json({ success: true, message: `Converted to ${target_brand}`, bill });
+    res
+      .status(200)
+      .json({ success: true, message: `Converted to ${target_brand}.`, bill });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+// ── POST /api/bills/:id/convert-estimate ──────────────────────────────────────
+// Converts an estimate into a real bill.
+// Body (all optional): { customer_id, amount_paid, price_mode }
+//
+// Logic:
+//   - Flips is_estimate → false
+//   - Assigns a fresh bill_number (the estimate's number is recycled)
+//   - Recalculates status based on amount_paid
+//   - If customer_id is provided, updates their total_debt and records a
+//     KhataTransaction for any upfront payment
+export const convertEstimateToBill = async (req, res) => {
+  try {
+    const { params, body, user } = req;
+    const owner_id = getOwnerId(user);
+    const { customer_id, amount_paid = 0, price_mode } = body;
+
+    const estimate = await Bill.findOne({
+      _id: params.id,
+      owner_id,
+      is_deleted: false,
+      is_estimate: true,          // must be an estimate
+    });
+
+    if (!estimate) {
+      return res.status(404).json({
+        success: false,
+        message: "Estimate not found or already converted.",
+      });
+    }
+
+    const finalAmountPaid = Math.min(Number(amount_paid), estimate.total_amount);
+    const finalCustomerId = customer_id || estimate.customer_id || null;
+    const finalPriceMode  = price_mode  || estimate.price_mode;
+    const status = deriveStatus(false, finalAmountPaid, estimate.total_amount);
+
+    // Generate a new bill number for the converted bill
+    const bill_number = await generateBillNumber(owner_id);
+
+    const convertedBill = await Bill.findByIdAndUpdate(
+      params.id,
+      {
+        is_estimate:  false,
+        bill_number,
+        price_mode:   finalPriceMode,
+        customer_id:  finalCustomerId,
+        amount_paid:  finalAmountPaid,
+        status,
+        updated_by:   user.name,
+      },
+      { new: true },
+    );
+
+    // Update customer khata if a customer is linked
+    if (finalCustomerId) {
+      const debtAmount = estimate.total_amount - finalAmountPaid;
+
+      await Promise.all([
+        debtAmount > 0
+          ? Customer.findByIdAndUpdate(finalCustomerId, {
+              $inc: { total_debt: debtAmount },
+            })
+          : Promise.resolve(),
+
+        finalAmountPaid > 0
+          ? KhataTransaction.create({
+              owner_id,
+              customer_id: finalCustomerId,
+              amount: finalAmountPaid,
+              type: "Payment",
+              received_by: user.name,
+            })
+          : Promise.resolve(),
+      ]);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Estimate converted to bill successfully.",
+      bill: convertedBill,
+    });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }

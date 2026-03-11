@@ -1,38 +1,28 @@
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { storageService } from '../services/storageService'; 
 
 const apiClient = axios.create({
-  baseURL: 'http://172.26.204.16:8080/api', // Use your local IP for physical device testing
+  // Replace this with your actual computer's local IP address and port
+  baseURL: process.env.EXPO_PUBLIC_API_URL, 
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request Interceptor: Automatically add JWT Token
-apiClient.interceptors.request.use(async (config) => {
-  const token = await AsyncStorage.getItem('userToken');
-  const deviceId = await AsyncStorage.getItem('deviceId'); // Unique ID for Single-Device policy
-  
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Response Interceptor: Handle Global Errors (Like Single-Device Kick-out)
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response && error.response.status === 401) {
-      const message = error.response.data.message;
-
-      if (message === 'LOGOUT_REQUIRED') {
-        Alert.alert('Session Expired', 'You have logged in from another device.');
-        await AsyncStorage.clear();
-        // TODO: Navigate to Login Screen here using a Navigation Service
-      }
+// Request Interceptor: Runs before every API call
+apiClient.interceptors.request.use(
+  async (config) => {
+    // Fetch the latest token from our storage service
+    const { token } = await storageService.getAuth();
+    
+    if (token) {
+      // If a token exists, attach it to the Authorization header
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    return config;
+  },
+  (error) => {
     return Promise.reject(error);
   }
 );

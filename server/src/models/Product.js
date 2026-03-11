@@ -1,22 +1,21 @@
-import mongoose from 'mongoose';
+import { Schema, model, Types } from 'mongoose';
 
-// Sub-schema for different brands of the same item
-const brandPriceSchema = new mongoose.Schema({
-  brand_name: { type: String, required: true },
-  purchase_price: { type: Number, required: true }, // Cost to owner
+const brandPriceSchema = new Schema({
+  brand_name: { type: String, required: true, trim: true },
+  purchase_price: { type: Number, required: true },
   retail_price: { type: Number, required: true },
   wholesale_price: { type: Number, required: true }
 }, { _id: false });
 
-const productSchema = new mongoose.Schema({
-  owner_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  subcategory_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Subcategory' },
+const productSchema = new Schema({
+  owner_id: { type: Types.ObjectId, ref: 'User', required: true },
+  subcategory_id: { type: Types.ObjectId, ref: 'Subcategory' },
   
-  item_name: { type: String, required: true }, // e.g., "1-inch PVC Pipe"
-  unit: { type: String, required: true }, // e.g., "pcs", "kg", "meters"
+  item_name: { type: String, required: true, trim: true }, 
+  unit: { type: String, required: true, default: 'pcs', trim: true}, 
   
   // Default (Brand A) Pricing
-  default_brand_name: { type: String, default: 'Generic' },
+  default_brand_name: { type: String, default: 'Generic', trim: true },
   purchase_price: { type: Number, required: true }, 
   retail_price: { type: Number, required: true },
   wholesale_price: { type: Number, required: true },
@@ -32,4 +31,8 @@ const productSchema = new mongoose.Schema({
   deleted_at: { type: Date }
 }, { timestamps: true });
 
-export default mongoose.model('Product', productSchema);
+// Optimize searching for products by owner
+productSchema.index({ owner_id: 1, is_deleted: 1 });
+productSchema.index({ owner_id: 1, item_name: 1 }); // Optimize search bars
+
+export default model('Product', productSchema);

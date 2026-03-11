@@ -1,48 +1,88 @@
-import { useEffect } from 'react';
-import { Stack, useRouter, useSegments } from "expo-router";
-import { AppProvider, useApp } from "@/src/context/AppContext";
-import { View, ActivityIndicator } from 'react-native';
+import { useEffect } from "react";
+import { Stack, useRouter, useSegments, useRootNavigationState } from "expo-router";
+import { AuthProvider, useAuth } from "../src/context/AuthContext";
+import { AppProvider } from "../src/context/AppContext";
+import { View, ActivityIndicator } from "react-native";
 import "../global.css";
 
-function RootLayoutNav() {
-  const { token, loading } = useApp();
+function RootNavigation() {
+  const { user, token, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const rootNavState = useRootNavigationState();
 
   useEffect(() => {
-    if (loading) return; // Wait until loadStorageData finishes
+    if (loading || !rootNavState?.key) return;
 
-    const inAuthGroup = segments[0] === "(auth)" || segments.length === 0;
+    const currentRoute = segments[0] ?? '';
+    const isAuthRoute  = currentRoute === '' || currentRoute === 'staff-login';
+    const isSetupRoute = currentRoute === 'shop-setup';
 
-    if (!token && !inAuthGroup) {
-      // Not logged in? Go to login
-      router.replace("/");
-    } else if (token && inAuthGroup) {
-      // Logged in? Jump straight to dashboard
-      router.replace("/dashboard");
+    const isStaff = user?.role === 'Staff' || user?.permissions !== undefined;
+    const hasShopProfile = !!user?.business_name || isStaff;
+
+    if (!token) {
+      if (!isAuthRoute) router.replace('/');
+      return;
     }
-  }, [token, loading, segments]);
+
+    if (!hasShopProfile) {
+      if (!isSetupRoute) router.replace('/shop-setup');
+      return;
+    }
+
+    // Fully set up — redirect away from auth/setup screens
+    if (isAuthRoute || isSetupRoute) {
+      router.replace('/(tabs)');
+    }
+
+  }, [token, user, loading, segments, rootNavState?.key]);
 
   if (loading) {
     return (
-      <View className="flex-1 bg-[#1f2617] items-center justify-center">
-        <ActivityIndicator size="large" color="#e5fc01" />
+      <View className="flex-1 bg-bg items-center justify-center">
+        <ActivityIndicator color="#1f2617" size="large" />
       </View>
     );
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      {/* ── Auth & Onboarding ── */}
       <Stack.Screen name="index" />
-      <Stack.Screen name="dashboard" />
+      <Stack.Screen name="staff-login" />
+      <Stack.Screen name="shop-setup" />
+      <Stack.Screen name="setup-inventory" />
+
+      {/* ── Main App ── */}
+      <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+
+      {/* ── Modal / Push Screens ── */}
+      <Stack.Screen name="subscription" />
+      <Stack.Screen name="customer" />
+      <Stack.Screen name="review" />
+
+      {/* ── Dynamic Routes ── */}
+      <Stack.Screen name="subcategory/[id]" />
+      <Stack.Screen name="products/[id]" />
+      <Stack.Screen name="bill/[id]" />
+      <Stack.Screen name="khata/[id]" />
+      <Stack.Screen name="staff/index" />
+      <Stack.Screen name="account" />
+      <Stack.Screen name="analytics" />
+      <Stack.Screen name="recycle-bin" />
+      <Stack.Screen name="legal" />
+      <Stack.Screen name="support" />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
-    <AppProvider>
-      <RootLayoutNav />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <RootNavigation />
+      </AppProvider>
+    </AuthProvider>
   );
 }

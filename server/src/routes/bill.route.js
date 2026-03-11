@@ -1,5 +1,5 @@
 import express from 'express';
-import { createBill, softDeleteBill } from '../controllers/bill.controller.js';
+import { convertEstimateToBill, createBill, softDeleteBill } from '../controllers/bill.controller.js';
 import { getBills, updateBill } from '../controllers/bill.controller.js'; 
 import { getBillById } from '../controllers/bill.controller.js';
 import { protect } from '../middlewares/auth.middleware.js';
@@ -28,5 +28,8 @@ router.delete('/:id', checkPermission('bills', 'delete'), softDeleteBill);
 
 // Brand Switch Route: Staff needs 'update' permission to alter bill totals
 router.put('/:id/convert-brand', checkPermission('bills', 'update'), convertBillBrand);
+
+// Convert estimate → real bill  (requires 'create' since it creates a new bill record effectively)
+router.post('/:id/convert-estimate', checkPermission('bills', 'create'), convertEstimateToBill);
 
 export default router;

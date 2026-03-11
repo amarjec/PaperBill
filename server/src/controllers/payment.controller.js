@@ -2,57 +2,118 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import User from '../models/User.js';
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_SECRET,
+// Define your one-time plans here
+const plans = {
+  'monthly': { 
+    amount: Number(process.env.MONTHLY_BILLING_PRICE),
+    days: Number(process.env.MONTHLY_BILLING_DAYS) 
+  },
+  'yearly': { 
+    amount: Number(process.env.ANNUAL_BILLING_PRICE), 
+    days: Number(process.env.ANNUAL_BILLING_DAYS)
+  }
+};
+
+Object.entries(plans).forEach(([key, val]) => {
+  if (isNaN(val.amount) || isNaN(val.days) || val.amount <= 0 || val.days <= 0) {
+    throw new Error(`Invalid plan config for "${key}". Check BILLING env vars.`);
+  }
 });
 
-export const createSubscriptionOrder = async (req, res) => {
-  try {
-    const { planId } = req.body; // e.g., 'plan_XYZ123'
-    
-    const subscription = await razorpay.subscriptions.create({
-      plan_id: planId,
-      customer_notify: 1,
-      total_count: 12, // 1 year
-    });
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_SECRET, 
+});
 
-    res.status(200).json({ success: true, subscriptionId: subscription.id });
+// 1. Create Order (One-Time Payment)
+export const createOrder = async (req, res) => {
+  try {
+    const { planId } = req.body; 
+    const userId = req.user.ownerId; // Using current project's auth middleware
+
+    const plan = plans[planId];
+    if (!plan) return res.status(400).json({ success: false, message: "Invalid Plan" });
+
+    const options = {
+      amount: plan.amount * 100, // Razorpay expects amount in paise
+      currency: "INR",
+      receipt: `rec_${Date.now()}`,
+      notes: { 
+        userId: userId.toString(), 
+        planId 
+      }
+    };
+
+    const order = await razorpay.orders.create(options);
+    res.status(200).json({ success: true, order });
+
   } catch (error) {
+    console.error("Create Order Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export const verifyPaymentWebhook = async (req, res) => {
+// 2. Verify Payment (Frontend calls this after success)
+export const verifyPayment = async (req, res) => {
   try {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers['x-razorpay-signature'];
-    
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, planId } = req.body;
+    const userId = req.user.ownerId; // Using current project's auth middleware
+
+    // Verify signature using the current project's secret key
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
-      .createHmac('sha256', secret)
-      .update(JSON.stringify(req.body))
+      .createHmac('sha256', process.env.RAZORPAY_SECRET)
+      .update(body.toString())
       .digest('hex');
 
-    if (expectedSignature === signature) {
-      // Payment is verified
-      const event = req.body.event;
-      if (event === 'subscription.authenticated' || event === 'subscription.charged') {
-        const { id, notes } = req.body.payload.subscription.entity;
-        // Update User
-        await User.findOneAndUpdate(
-          { _id: notes.userId }, 
-          { 
-            isPremium: true, 
-            'subscription.status': 'active',
-            'subscription.razorpay_subscription_id': id
-          }
-        );
-      }
-      res.status(200).json({ status: 'ok' });
-    } else {
-      res.status(400).json({ status: 'invalid signature' });
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: "Invalid Signature" });
     }
+
+    // --- ACTIVATE PREMIUM ---
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    // SECURITY CHECK: Prevent Double Processing if user clicks verify twice
+    if (user.subscription?.last_order_id === razorpay_order_id) {
+      return res.status(200).json({ success: true, message: "Already Activated", user });
+    }
+
+    const plan = plans[planId];
+    const currentDate = new Date();
+    
+    // Logic: If already active, extend from Expiry. If expired/free, start from Now.
+    let startDate = currentDate;
+    if (user.isPremium && user.subscription?.end_date && new Date(user.subscription.end_date) > currentDate) {
+      startDate = new Date(user.subscription.end_date);
+    }
+
+    // Safe Timestamp Math
+    const durationInMillis = plan.days * 24 * 60 * 60 * 1000;
+    const newExpiry = new Date(startDate.getTime() + durationInMillis);
+
+    // Update User using your current schema structure 
+    user.isPremium = true;
+    user.subscription = {
+      plan_name: planId,
+      status: 'active',
+      start_date: startDate,
+      end_date: newExpiry,
+      last_order_id: razorpay_order_id 
+    };
+    
+    await user.save();
+
+    // Select a clean object before sending
+    const { secure_pin, ...safeUser } = user.toObject();
+    res.status(200).json({ success: true, message: "Premium Activated!", user: safeUser });
+
+    // Also fix the "Already Activated" early return:
+    const { secure_pin: _, ...safeUserEarly } = user.toObject();
+    return res.status(200).json({ success: true, message: "Already Activated", user: safeUserEarly });
+
   } catch (error) {
+    console.error("Verify Error:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

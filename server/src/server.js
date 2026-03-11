@@ -8,6 +8,7 @@ import connectDB from './config/db.js';
 connectDB();
 
 const PORT = process.env.PORT || 8000;
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8081'];
 
 // Create HTTP server wrapping the Express app
 const server = http.createServer(app);
@@ -15,7 +16,7 @@ const server = http.createServer(app);
 // Initialize Socket.io for real-time features (OTP push & Device Kick-out)
 const io = new Server(server, {
   cors: {
-    origin: '*', // In production, restrict this to your app's domain
+    origin: allowedOrigins, // In production, restrict this to your app's domain
     methods: ['GET', 'POST']
   }
 });

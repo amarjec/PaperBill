@@ -1,56 +1,81 @@
-import PreInventoryItem from '../models/PreInventoryItem.js';
-import Category from '../models/Category.js';
-import Subcategory from '../models/Subcategory.js';
-import Product from '../models/Product.js';
+import PreInventoryItem from "../models/PreInventoryItem.js";
+import Category from "../models/Category.js";
+import Subcategory from "../models/Subcategory.js";
+import Product from "../models/Product.js";
+import User from "../models/User.js";
 
 export const importPreInventory = async (req, res) => {
   try {
-    const owner_id = req.user.userId;
-    const { business_types } = req.body; // Array, e.g., ['Hardware', 'Electronics']
-    const created_by = 'System Import';
+    const { body, user } = req;
+    const owner_id = user.userId;
+    const { business_types } = body;
 
-    // 1. Fetch the templates
-    const templates = await PreInventoryItem.find({ business_type: { $in: business_types } });
-    if (templates.length === 0) {
-      return res.status(404).json({ success: false, message: 'No templates found for these types.' });
+    if (
+      !business_types ||
+      !Array.isArray(business_types) ||
+      business_types.length === 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Valid business_types array is required.",
+        });
     }
 
-    // Dictionaries to prevent creating duplicate categories/subcategories during the loop
-    const categoryMap = new Map(); // 'Hardware' -> Category ObjectId
-    const subcategoryMap = new Map(); // 'Hardware-Pipes' -> Subcategory ObjectId
+    const created_by = "System Import";
+    const templates = await PreInventoryItem.find({
+      business_type: { $in: business_types },
+    });
 
+    if (templates.length === 0) {
+      return res
+        .status(404)
+        .json({
+          success: false,
+          message: "No templates found for these types.",
+        });
+    }
+
+    const categoryMap = new Map();
+    const subcategoryMap = new Map();
     const productsToInsert = [];
 
-    // 2. Loop through templates and build the relational structure sequentially
     for (const item of templates) {
-      
-      // --- Handle Category ---
       let categoryId = categoryMap.get(item.category_name);
       if (!categoryId) {
-        // Check if the user already has this category to avoid duplicates from previous imports
-        let existingCat = await Category.findOne({ owner_id, name: item.category_name });
+        let existingCat = await Category.findOne({
+          owner_id,
+          name: item.category_name,
+        });
         if (!existingCat) {
-          existingCat = await Category.create({ owner_id, name: item.category_name, created_by });
+          existingCat = await Category.create({
+            owner_id,
+            name: item.category_name,
+            created_by,
+          });
         }
         categoryId = existingCat._id;
         categoryMap.set(item.category_name, categoryId);
       }
 
-      // --- Handle Subcategory ---
       let subcategoryId = null;
       if (item.subcategory_name) {
-        // Unique key combines category + subcategory to prevent cross-category naming collisions
         const subMapKey = `${categoryId.toString()}-${item.subcategory_name}`;
         subcategoryId = subcategoryMap.get(subMapKey);
-        
+
         if (!subcategoryId) {
-          let existingSub = await Subcategory.findOne({ owner_id, category_id: categoryId, name: item.subcategory_name });
+          let existingSub = await Subcategory.findOne({
+            owner_id,
+            category_id: categoryId,
+            name: item.subcategory_name,
+          });
           if (!existingSub) {
-            existingSub = await Subcategory.create({ 
-              owner_id, 
-              category_id: categoryId, 
-              name: item.subcategory_name, 
-              created_by 
+            existingSub = await Subcategory.create({
+              owner_id,
+              category_id: categoryId,
+              name: item.subcategory_name,
+              created_by,
             });
           }
           subcategoryId = existingSub._id;
@@ -58,31 +83,40 @@ export const importPreInventory = async (req, res) => {
         }
       }
 
-      // --- Prepare Product ---
-      // We set prices to 0 so the Owner can fill them in later
+      // Skip if a non-deleted product with this name already exists under this subcategory
+      const existingProduct = await Product.findOne({
+        owner_id,
+        item_name: item.item_name,
+        subcategory_id: subcategoryId,
+        is_deleted: false,
+      });
+      if (existingProduct) continue;
+
       productsToInsert.push({
         owner_id,
-        subcategory_id: subcategoryId, // Can be null if no subcategory exists
+        subcategory_id: subcategoryId,
         item_name: item.item_name,
         unit: item.unit,
-        default_brand_name: item.default_brands && item.default_brands.length > 0 ? item.default_brands[0] : 'Generic',
+        default_brand_name:
+          item.default_brands?.length > 0 ? item.default_brands[0] : "Generic",
         purchase_price: 0,
         retail_price: 0,
         wholesale_price: 0,
-        created_by
+        created_by,
       });
     }
 
-    // 3. Bulk Insert the Products (Much faster than saving 500 items one-by-one)
     if (productsToInsert.length > 0) {
-      await Product.insertMany(productsToInsert);
+      // ordered:false — skip individual duplicates without aborting the whole batch
+      await Product.insertMany(productsToInsert, { ordered: false });
     }
 
-    res.status(200).json({ 
-      success: true, 
-      message: `Successfully imported ${productsToInsert.length} items, creating ${categoryMap.size} categories.` 
-    });
-
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: `Imported ${productsToInsert.length} new items.`,
+      });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -90,17 +124,131 @@ export const importPreInventory = async (req, res) => {
 
 export const getPreInventoryTemplates = async (req, res) => {
   try {
-    const { businessType } = req.query; // e.g., ?businessType=Hardware
-    
-    let query = {};
-    if (businessType) {
-      // If the user has multiple business types, query handles arrays automatically
-      query.business_type = { $in: businessType.split(',') }; 
-    }
+    const { query } = req;
+    const { businessType } = query;
+    const dbQuery = businessType
+      ? { business_type: { $in: businessType.split(",") } }
+      : {};
 
-    const templates = await PreInventoryItem.find(query);
+    const templates = await PreInventoryItem.find(dbQuery);
     res.status(200).json({ success: true, count: templates.length, templates });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export const importInventoryTemplate = async (req, res) => {
+  try {
+    const { body, user } = req;
+
+    if (!user?.userId) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication failed." });
+    }
+
+    const owner_id = user.userId;
+    const creator_name = user.name || "System Import";
+    const { templateData } = body;
+
+    if (!templateData || !Array.isArray(templateData)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid template format." });
+    }
+
+    let insertedCount = 0;
+    let skippedCount = 0;
+
+    for (const cat of templateData) {
+      // FIX: findOneAndUpdate with upsert so re-running never creates duplicate categories
+      let existingCategory = await Category.findOne({
+        name: cat.category,
+        owner_id,
+        is_deleted: false,
+      });
+      if (!existingCategory) {
+        existingCategory = await Category.create({
+          name: cat.category,
+          owner_id,
+          created_by: creator_name,
+        });
+      }
+
+      for (const sub of cat.subCategories) {
+        // FIX: Same upsert-style guard for subcategories
+        let existingSub = await Subcategory.findOne({
+          name: sub.name,
+          category_id: existingCategory._id,
+          owner_id,
+          is_deleted: false,
+        });
+        if (!existingSub) {
+          existingSub = await Subcategory.create({
+            name: sub.name,
+            category_id: existingCategory._id,
+            owner_id,
+            created_by: creator_name,
+          });
+        }
+
+        // FIX: Build a set of already-existing product names under this subcategory so we
+        // can filter them out BEFORE attempting an insert — instead of blindly inserting
+        // and silently swallowing all errors (which also hides real write failures).
+        const existingNames = await Product.distinct("item_name", {
+          owner_id,
+          subcategory_id: existingSub._id,
+          is_deleted: false,
+        });
+        const existingSet = new Set(existingNames);
+
+        const newProducts = sub.products
+          .filter((prod) => {
+            if (existingSet.has(prod.label)) {
+              skippedCount++;
+              return false;
+            }
+            return true;
+          })
+          .map((prod) => ({
+            owner_id,
+            subcategory_id: existingSub._id,
+            item_name: prod.label,
+            unit: prod.unit || "pcs",
+            purchase_price: Number(prod.costPrice) || 0,
+            retail_price: Number(prod.sellingPrice) || 0,
+            wholesale_price: Number(prod.wholesalePrice) || 0,
+            default_brand_name: "Generic",
+            created_by: creator_name,
+            alternate_brands: [],
+            is_deleted: false,
+          }));
+
+        if (newProducts.length > 0) {
+          // ordered:false — a race-condition duplicate on any single doc won't abort the batch
+          const result = await Product.insertMany(newProducts, {
+            ordered: false,
+          });
+          insertedCount += result.length;
+        }
+      }
+    }
+
+    await User.findByIdAndUpdate(owner_id, { has_inventory: true });
+
+    res.status(200).json({
+      success: true,
+      message: "Inventory import complete.",
+      inserted: insertedCount,
+      skipped: skippedCount,
+    });
+  } catch (error) {
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Internal Server Error",
+        error: error.message,
+      });
   }
 };

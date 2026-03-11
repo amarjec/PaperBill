@@ -11,7 +11,7 @@ const staffSchema = new mongoose.Schema({
   owner_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   phone_number: { type: String, required: true },
-  assigned_pin: { type: String, required: true }, // Set by Owner, given to Staff
+  assigned_pin: { type: String, }, 
   
   // Security
   device_id: { type: String }, // Single-Device tracking for Staff
@@ -19,10 +19,12 @@ const staffSchema = new mongoose.Schema({
   
   // Granular Permissions
   permissions: {
-    bills: { type: permissionSchema, default: () => ({}) },
+    category: { type: permissionSchema, default: () => ({}) },
+    subCategory: { type: permissionSchema, default: () => ({}) },
     products: { type: permissionSchema, default: () => ({}) },
     customers: { type: permissionSchema, default: () => ({}) },
-    khata: { type: permissionSchema, default: () => ({}) }
+    bills: { type: permissionSchema, default: () => ({}) },
+    khata: { type: permissionSchema, default: () => ({}) },
   },
 
   // Audit
