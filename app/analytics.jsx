@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Dimensions, Modal, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { LineChart } from 'react-native-gifted-charts';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import PremiumLock from '@/src/components/PremiumLock';
@@ -23,52 +23,97 @@ const fmt = (n) => {
 };
 const fmtFull = (n) => `₹${(n || 0).toLocaleString('en-IN')}`;
 
-// ── tiny atoms ────────────────────────────────────────────────────────────────
-const Sep = () => <View className="h-px bg-card/60 mx-4" />;
+// ── atoms ─────────────────────────────────────────────────────────────────────
+const Sep = () => (
+  <View style={{ height: 1, backgroundColor: 'rgba(200,192,180,0.3)', marginHorizontal: 16 }} />
+);
 
 const SectionLabel = ({ children }) => (
-  <Text className="text-secondaryText text-[10px] font-black uppercase tracking-widest mb-2.5 ml-0.5">
+  <Text style={{ color: '#a8a29e', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 10, marginLeft: 2 }}>
     {children}
   </Text>
 );
 
-// ── metric card (small, 2-col) ────────────────────────────────────────────────
+// ── metric card ───────────────────────────────────────────────────────────────
 const MetricCard = ({ icon, iconColor, iconBg, label, value, sub, subColor }) => (
-  <View
-    className={`flex-1 bg-white rounded-[20px] border border-card px-4 py-4`}
-    style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
-  >
-    <View className={`w-8 h-8 rounded-xl items-center justify-center mb-3 ${iconBg}`}>
+  <View style={{
+    flex: 1, backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#ede9e3',
+    paddingHorizontal: 16, paddingVertical: 16,
+    shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  }}>
+    <View style={{ width: 32, height: 32, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: iconBg, marginBottom: 12 }}>
       <Feather name={icon} size={14} color={iconColor} />
     </View>
-    <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest mb-1">{label}</Text>
-    <Text className="text-primaryText font-black text-[17px] leading-tight">{value}</Text>
-    {sub && <Text className={`text-[10px] font-bold mt-0.5 ${subColor || 'text-secondaryText'}`}>{sub}</Text>}
+    <Text style={{ color: '#a8a29e', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 }}>{label}</Text>
+    <Text style={{ color: '#1c1917', fontWeight: '900', fontSize: 17, lineHeight: 20 }}>{value}</Text>
+    {sub && <Text style={{ fontSize: 10, fontWeight: '700', marginTop: 2, color: subColor || '#a8a29e' }}>{sub}</Text>}
   </View>
 );
 
-// ── rank badge ────────────────────────────────────────────────────────────────
-const rankBg = ['bg-amber-400', 'bg-card', 'bg-card'];
-const rankText = ['text-primaryText', 'text-secondaryText', 'text-secondaryText'];
+// ── rank helpers ──────────────────────────────────────────────────────────────
+const rankBg   = ['#f59e0b', '#f5f4f0', '#f5f4f0'];
+const rankText = ['#1c1917', '#a8a29e', '#a8a29e'];
 
-// ── filter pills ─────────────────────────────────────────────────────────────
-const FILTERS = [
+// ── filter configs ────────────────────────────────────────────────────────────
+const DATE_FILTERS = [
   { key: 'today', label: 'Today' },
-  { key: 'week',  label: '7 Days' },
-  { key: 'month', label: 'Month' },
-  { key: 'year',  label: 'Year' },
-  { key: 'custom', label: 'Custom' },
+  { key: 'week',  label: 'Last 7 Days' },
+  { key: 'month', label: 'This Month' },
+  { key: 'year',  label: 'This Year' },
+  { key: 'custom', label: 'Custom Range', icon: 'calendar' },
 ];
+
+function buildFilterLabel(filterType, customRange) {
+  if (filterType === 'custom' && customRange?.start) {
+    const s = new Date(customRange.start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    const e = new Date(customRange.end).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    return `${s} – ${e}`;
+  }
+  return DATE_FILTERS.find(f => f.key === filterType)?.label || 'This Month';
+}
 
 // ── main screen ───────────────────────────────────────────────────────────────
 export default function AnalyticsScreen() {
-  const router  = useRouter();
-  const { data, loading, filterType, setFilterType, customRange, applyCustomRange, refresh } = useAnalytics();
+  const router = useRouter();
+  const { data, loading, filterType, setFilterType, customRange, applyCustomRange } = useAnalytics();
 
-  const [showDateModal, setShowDateModal]   = useState(false);
+  // Filter modal
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [localFilter, setLocalFilter]         = useState(filterType);
+
+  // Custom date (inside modal)
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempStart, setTempStart]           = useState(new Date());
   const [tempEnd, setTempEnd]               = useState(new Date());
   const [activePicker, setActivePicker]     = useState(Platform.OS === 'ios' ? 'start' : null);
+
+  const openFilterModal = () => {
+    setLocalFilter(filterType);
+    setShowDatePicker(false);
+    setActivePicker(Platform.OS === 'ios' ? 'start' : null);
+    if (customRange?.start) {
+      setTempStart(new Date(customRange.start));
+      setTempEnd(new Date(customRange.end));
+    } else {
+      setTempStart(new Date());
+      setTempEnd(new Date());
+    }
+    setShowFilterModal(true);
+  };
+
+  const applyFilters = () => {
+    if (localFilter === 'custom') {
+      applyCustomRange(tempStart, tempEnd);
+    } else {
+      setFilterType(localFilter);
+    }
+    setShowFilterModal(false);
+  };
+
+  const onDateChange = (_, date) => {
+    if (Platform.OS === 'android') setActivePicker(null);
+    if (date) activePicker === 'start' ? setTempStart(date) : setTempEnd(date);
+  };
 
   // chart data
   const chartData = useMemo(() => {
@@ -83,44 +128,22 @@ export default function AnalyticsScreen() {
     });
   }, [data]);
 
-  // derived metrics
-  const summary   = data?.summary || {};
-  const totalSales   = summary.totalSales   || 0;
-  const totalBills   = summary.totalBills   || 0;
-  const totalProfit  = summary.totalProfit  || 0;
-  const totalUdhaar  = summary.totalUdhaar  || 0;
-  const avgOrder     = totalBills > 0 ? Math.round(totalSales / totalBills) : 0;
-  const marginPct    = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : '0.0';
-  const collectionRate = totalSales > 0
-    ? (((totalSales - totalUdhaar) / totalSales) * 100).toFixed(1)
-    : '100.0';
+  // metrics
+  const summary        = data?.summary || {};
+  const totalSales     = summary.totalSales  || 0;
+  const totalBills     = summary.totalBills  || 0;
+  const totalProfit    = summary.totalProfit || 0;
+  const totalUdhaar    = summary.totalUdhaar || 0;
+  const avgOrder       = totalBills > 0 ? Math.round(totalSales / totalBills) : 0;
+  const marginPct      = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : '0.0';
+  const collectionRate = totalSales > 0 ? (((totalSales - totalUdhaar) / totalSales) * 100).toFixed(1) : '100.0';
 
-  const topProducts  = data?.topProducts?.byProfit  || [];
+  const topProducts  = data?.topProducts?.byProfit   || [];
   const topByQty     = data?.topProducts?.byQuantity || [];
-  const topCustomers = data?.topCustomers || [];
+  const topCustomers = data?.topCustomers            || [];
 
-  const handleFilterPress = (key) => {
-    if (key === 'custom') { setShowDateModal(true); return; }
-    setFilterType(key);
-  };
-
-  const onDateChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') setActivePicker(null);
-    if (selectedDate) {
-      if (activePicker === 'start') setTempStart(selectedDate);
-      else setTempEnd(selectedDate);
-    }
-  };
-
-  const applyCustom = () => {
-    applyCustomRange(tempStart, tempEnd);
-    setShowDateModal(false);
-  };
-
-  // label for current filter
-  const filterLabel = filterType === 'custom' && customRange?.start
-    ? `${new Date(customRange.start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} – ${new Date(customRange.end).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}`
-    : FILTERS.find(f => f.key === filterType)?.label || 'Analytics';
+  const filterLabel  = buildFilterLabel(filterType, customRange);
+  const isFiltered   = filterType !== 'month'; // 'month' is default
 
   return (
     <PremiumLock
@@ -128,138 +151,106 @@ export default function AnalyticsScreen() {
       description="Track your true profit, find your best-selling items, and visualize your shop's growth with real-time data."
       icon="chart-areaspline"
     >
-      <SafeAreaView className="flex-1 bg-bg">
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f4f0' }}>
 
-        {/* ── Header ───────────────────────────────────────────────────────── */}
-        <View className="flex-row items-center px-5 pt-4 pb-3">
+        {/* ── Header ──────────────────────────────────────────────── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 12 }}>
+
+          {/* Back */}
           <TouchableOpacity
             onPress={() => router.back()}
-            className="bg-card w-10 h-10 rounded-2xl items-center justify-center mr-4"
             activeOpacity={0.7}
+            style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#ede9e3' }}
           >
             <Feather name="arrow-left" size={18} color="#1f2617" />
           </TouchableOpacity>
-          <View className="flex-1">
-            <Text className="text-primaryText text-xl font-black tracking-tight">Analytics</Text>
-            <Text className="text-secondaryText text-[10px] font-bold mt-0.5">{filterLabel}</Text>
+
+          {/* Title */}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#1c1917', fontSize: 20, fontWeight: '900', letterSpacing: -0.3 }}>Analytics</Text>
+            <Text style={{ color: '#a8a29e', fontSize: 10, fontWeight: '700', marginTop: 1 }}>{filterLabel}</Text>
           </View>
+
+          {/* Filter chip — replaces refresh button */}
           <TouchableOpacity
-            onPress={refresh}
-            className="bg-card w-10 h-10 rounded-2xl items-center justify-center"
-            activeOpacity={0.7}
+            onPress={openFilterModal}
+            activeOpacity={0.75}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              paddingHorizontal: 14, paddingVertical: 10,
+              borderRadius: 14,
+              backgroundColor: isFiltered ? '#1f2617' : '#ffffff',
+              borderWidth: 1.5,
+              borderColor: isFiltered ? '#1f2617' : '#ede9e3',
+              shadowColor: '#1f2617',
+              shadowOpacity: isFiltered ? 0.2 : 0.05,
+              shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: isFiltered ? 4 : 1,
+            }}
           >
-            <Feather name="refresh-cw" size={16} color="#393f35" />
+            <Feather name="sliders" size={13} color={isFiltered ? '#e5fc01' : '#78716c'} />
+            <Text style={{
+              fontSize: 11, fontWeight: '800',
+              color: isFiltered ? '#e5fc01' : '#44403c',
+              maxWidth: 80,
+            }} numberOfLines={1}>
+              {filterLabel}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Filter pills ─────────────────────────────────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12, gap: 8 }}
-        >
-          {FILTERS.map(f => {
-            const active = filterType === f.key;
-            return (
-              <TouchableOpacity
-                key={f.key}
-                onPress={() => handleFilterPress(f.key)}
-                activeOpacity={0.75}
-                className={`px-4 py-2 rounded-2xl border flex-1 justify-center items-center ${
-                  active ? 'bg-primaryText border-primaryText' : 'bg-white border-card'
-                }`}
-              >
-                {f.key === 'custom' && (
-                  <Feather name="calendar" size={11} color={active ? '#e5fc01' : '#bfb5a8'} style={{ marginRight: 4 }} />
-                )}
-                <Text className={`font-black text-[12px] ${active ? 'text-accent' : 'text-secondaryText'}`}>
-                  {f.key === 'custom' && filterType === 'custom' && customRange?.start
-                    ? `${new Date(customRange.start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} – ${new Date(customRange.end).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
-                    : f.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
+        {/* ── Content ─────────────────────────────────────────────── */}
         {loading || !data ? (
-          <View className="flex-1 items-center justify-center">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator size="large" color="#1f2617" />
-            <Text className="text-secondaryText text-[10px] font-black uppercase tracking-widest mt-4 opacity-50">
+            <Text style={{ color: '#a8a29e', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, marginTop: 14, opacity: 0.6 }}>
               Crunching numbers…
             </Text>
           </View>
         ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-          >
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}>
 
-            {/* ── Hero revenue card ─────────────────────────────────────────── */}
-            <View
-              className="bg-primaryText rounded-[28px] px-5 py-5 mb-4"
-              style={{ shadowColor: '#1f2617', shadowOpacity: 0.28, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 7 }}
-            >
-              {/* Top stripe */}
-              <View className="h-0.5 bg-accent rounded-full w-10 mb-4" />
-
-              <Text className="text-secondary text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">
+            {/* Hero revenue card */}
+            <View style={{
+              backgroundColor: '#1f2617', borderRadius: 28, paddingHorizontal: 20, paddingVertical: 20, marginBottom: 16,
+              shadowColor: '#1f2617', shadowOpacity: 0.28, shadowRadius: 16, shadowOffset: { width: 0, height: 7 }, elevation: 7,
+            }}>
+              <View style={{ height: 2, backgroundColor: '#e5fc01', borderRadius: 1, width: 40, marginBottom: 16 }} />
+              <Text style={{ color: 'rgba(229,252,1,0.5)', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>
                 Total Revenue
               </Text>
-              <Text className="text-accent font-black text-[40px] leading-none mb-1">
+              <Text style={{ color: '#e5fc01', fontWeight: '900', fontSize: 40, lineHeight: 44, marginBottom: 4 }}>
                 {fmt(totalSales)}
               </Text>
-              <Text className="text-secondary text-[11px] font-bold opacity-40">
+              <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '700' }}>
                 {fmtFull(totalSales)}
               </Text>
             </View>
 
-            {/* ── 2×2 metric grid ──────────────────────────────────────────── */}
-            <View className="mb-4 flex-row" style={{ gap: 10 }}>
-              <MetricCard
-                icon="trending-up" iconBg="bg-green-50" iconColor="#16a34a"
-                label="Est. Profit"
-                value={fmt(totalProfit)}
-                sub={`${marginPct}% margin`}
-                subColor="text-green-600"
-              />
-              <MetricCard
-                icon="alert-circle" iconBg="bg-red-50" iconColor="#ef4444"
-                label="New Udhaar"
-                value={fmt(totalUdhaar)}
+            {/* 2×2 metric grid */}
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
+              <MetricCard icon="trending-up" iconBg="#f0fdf4" iconColor="#16a34a" label="Est. Profit" value={fmt(totalProfit)} sub={`${marginPct}% margin`} subColor="#16a34a" />
+              <MetricCard icon="alert-circle" iconBg="#fef2f2" iconColor="#ef4444" label="New Udhaar" value={fmt(totalUdhaar)}
                 sub={totalUdhaar > 0 ? `${(100 - parseFloat(collectionRate)).toFixed(1)}% uncollected` : 'All collected'}
-                subColor={totalUdhaar > 0 ? 'text-red-400' : 'text-green-600'}
-              />
+                subColor={totalUdhaar > 0 ? '#ef4444' : '#16a34a'} />
             </View>
-            <View className="mb-5 flex-row" style={{ gap: 10 }}>
-              <MetricCard
-                icon="check-circle" iconBg="bg-blue-50" iconColor="#2563eb"
-                label="Collection Rate"
-                value={`${collectionRate}%`}
-                sub={`₹${(totalSales - totalUdhaar).toLocaleString('en-IN')} received`}
-                subColor="text-blue-600"
-              />
-              <MetricCard
-                icon="shopping-bag" iconBg="bg-purple-50" iconColor="#7c3aed"
-                label="Avg. Bill Value"
-                value={fmt(avgOrder)}
-                sub={`${totalBills} bills total`}
-                subColor="text-purple-600"
-              />
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+              <MetricCard icon="check-circle" iconBg="#eff6ff" iconColor="#2563eb" label="Collection Rate" value={`${collectionRate}%`} sub={`₹${(totalSales - totalUdhaar).toLocaleString('en-IN')} received`} subColor="#2563eb" />
+              <MetricCard icon="shopping-bag" iconBg="#f5f3ff" iconColor="#7c3aed" label="Avg. Bill Value" value={fmt(avgOrder)} sub={`${totalBills} bills total`} subColor="#7c3aed" />
             </View>
 
-            {/* ── Revenue trend chart ───────────────────────────────────────── */}
-            <View className="mb-5">
-              <View className="flex-row items-center justify-between mb-2.5">
+            {/* Revenue trend chart */}
+            <View style={{ marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <SectionLabel>Revenue Trend</SectionLabel>
-                <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest opacity-50">Daily</Text>
+                <Text style={{ color: '#a8a29e', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5, opacity: 0.6 }}>Daily</Text>
               </View>
-              <View
-                className="bg-white rounded-[22px] border border-card pt-5 pb-4 overflow-hidden"
-                style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}
-              >
+              <View style={{
+                backgroundColor: '#ffffff', borderRadius: 22, borderWidth: 1, borderColor: '#ede9e3',
+                paddingTop: 20, paddingBottom: 16, overflow: 'hidden',
+                shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2,
+              }}>
                 {chartData.length > 0 ? (
-                  <View className="items-center">
+                  <View style={{ alignItems: 'center' }}>
                     <LineChart
                       data={chartData}
                       width={SW - 80}
@@ -273,9 +264,7 @@ export default function AnalyticsScreen() {
                       endFillColor="#ffffff"
                       startOpacity={0.5}
                       endOpacity={0.02}
-                      areaChart
-                      curved
-                      hideRules
+                      areaChart curved hideRules
                       yAxisColor="transparent"
                       xAxisColor="#f0ece6"
                       yAxisTextStyle={{ color: '#bfb5a8', fontSize: 9, fontWeight: '700' }}
@@ -285,43 +274,35 @@ export default function AnalyticsScreen() {
                     />
                   </View>
                 ) : (
-                  <View className="h-[160px] items-center justify-center opacity-30">
+                  <View style={{ height: 160, alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}>
                     <Feather name="bar-chart-2" size={30} color="#bfb5a8" />
-                    <Text className="text-secondaryText font-bold text-[11px] mt-2">No sales data for this period</Text>
+                    <Text style={{ color: '#a8a29e', fontWeight: '700', fontSize: 11, marginTop: 8 }}>No sales data for this period</Text>
                   </View>
                 )}
               </View>
             </View>
 
-            {/* ── Top profitable products ───────────────────────────────────── */}
+            {/* Top by profit */}
             {topProducts.length > 0 && (
-              <View className="mb-5">
-                <View className="flex-row items-center justify-between mb-2.5">
+              <View style={{ marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <SectionLabel>Top by Profit</SectionLabel>
-                  <Text className="text-green-600 text-[9px] font-black uppercase tracking-widest">Est. Margin</Text>
+                  <Text style={{ color: '#16a34a', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 }}>Est. Margin</Text>
                 </View>
-                <View
-                  className="bg-white rounded-[22px] border border-card overflow-hidden"
-                  style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}
-                >
+                <View style={{ backgroundColor: '#ffffff', borderRadius: 22, borderWidth: 1, borderColor: '#ede9e3', overflow: 'hidden', shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}>
                   {topProducts.map((item, i) => (
                     <View key={i}>
-                      <View className="flex-row items-center px-4 py-3.5">
-                        {/* Rank */}
-                        <View className={`w-7 h-7 rounded-xl items-center justify-center mr-3 flex-shrink-0 ${rankBg[i] || 'bg-card'}`}>
-                          <Text className={`font-black text-[11px] ${rankText[i] || 'text-secondaryText'}`}>{i + 1}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 }}>
+                        <View style={{ width: 28, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: rankBg[i] || '#f5f4f0', marginRight: 12, flexShrink: 0 }}>
+                          <Text style={{ fontWeight: '900', fontSize: 11, color: rankText[i] || '#a8a29e' }}>{i + 1}</Text>
                         </View>
-                        {/* Name + stats */}
-                        <View className="flex-1 pr-2">
-                          <Text className="text-primaryText font-bold text-[13px]" numberOfLines={1}>{item._id}</Text>
-                          <Text className="text-secondaryText text-[10px] font-bold mt-0.5">
-                            {item.qtySold} units · Rev {fmt(item.revenue)}
-                          </Text>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text style={{ color: '#1c1917', fontWeight: '700', fontSize: 13 }} numberOfLines={1}>{item._id}</Text>
+                          <Text style={{ color: '#a8a29e', fontSize: 10, fontWeight: '700', marginTop: 2 }}>{item.qtySold} units · Rev {fmt(item.revenue)}</Text>
                         </View>
-                        {/* Profit */}
-                        <View className="items-end">
-                          <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest">Profit</Text>
-                          <Text className="text-green-600 font-black text-[14px] mt-0.5">+{fmt(item.profit)}</Text>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ color: '#a8a29e', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 }}>Profit</Text>
+                          <Text style={{ color: '#16a34a', fontWeight: '900', fontSize: 14, marginTop: 2 }}>+{fmt(item.profit)}</Text>
                         </View>
                       </View>
                       {i < topProducts.length - 1 && <Sep />}
@@ -331,35 +312,33 @@ export default function AnalyticsScreen() {
               </View>
             )}
 
-            {/* ── Top by quantity sold ──────────────────────────────────────── */}
+            {/* Top by quantity */}
             {topByQty.length > 0 && (
-              <View className="mb-5">
-                <View className="flex-row items-center justify-between mb-2.5">
+              <View style={{ marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <SectionLabel>Top by Units Sold</SectionLabel>
-                  <Text className="text-purple-600 text-[9px] font-black uppercase tracking-widest">Volume</Text>
+                  <Text style={{ color: '#7c3aed', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5 }}>Volume</Text>
                 </View>
-                <View
-                  className="bg-white rounded-[22px] border border-card overflow-hidden"
-                  style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}
-                >
+                <View style={{ backgroundColor: '#ffffff', borderRadius: 22, borderWidth: 1, borderColor: '#ede9e3', overflow: 'hidden', shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}>
                   {topByQty.map((item, i) => {
                     const maxQty = topByQty[0]?.qtySold || 1;
                     const barW   = Math.round((item.qtySold / maxQty) * 100);
                     return (
                       <View key={i}>
-                        <View className="px-4 py-3.5">
-                          <View className="flex-row items-center justify-between mb-2">
-                            <View className="flex-row items-center flex-1 pr-3">
-                              <View className={`w-7 h-7 rounded-xl items-center justify-center mr-3 flex-shrink-0 ${rankBg[i] || 'bg-card'}`}>
-                                <Text className={`font-black text-[11px] ${rankText[i] || 'text-secondaryText'}`}>{i + 1}</Text>
+                        <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, paddingRight: 12 }}>
+                              <View style={{ width: 28, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: rankBg[i] || '#f5f4f0', marginRight: 12, flexShrink: 0 }}>
+                                <Text style={{ fontWeight: '900', fontSize: 11, color: rankText[i] || '#a8a29e' }}>{i + 1}</Text>
                               </View>
-                              <Text className="text-primaryText font-bold text-[13px] flex-1" numberOfLines={1}>{item._id}</Text>
+                              <Text style={{ color: '#1c1917', fontWeight: '700', fontSize: 13, flex: 1 }} numberOfLines={1}>{item._id}</Text>
                             </View>
-                            <Text className="text-purple-600 font-black text-[13px]">{item.qtySold} <Text className="text-secondaryText font-bold text-[10px]">units</Text></Text>
+                            <Text style={{ color: '#7c3aed', fontWeight: '900', fontSize: 13 }}>
+                              {item.qtySold} <Text style={{ color: '#a8a29e', fontWeight: '700', fontSize: 10 }}>units</Text>
+                            </Text>
                           </View>
-                          {/* Progress bar */}
-                          <View className="h-1.5 bg-card rounded-full ml-10 overflow-hidden">
-                            <View className="h-full bg-purple-400 rounded-full" style={{ width: `${barW}%` }} />
+                          <View style={{ height: 6, backgroundColor: '#f0ece6', borderRadius: 3, marginLeft: 40, overflow: 'hidden' }}>
+                            <View style={{ height: '100%', backgroundColor: '#a78bfa', borderRadius: 3, width: `${barW}%` }} />
                           </View>
                         </View>
                         {i < topByQty.length - 1 && <Sep />}
@@ -370,38 +349,34 @@ export default function AnalyticsScreen() {
               </View>
             )}
 
-            {/* ── Top customers ─────────────────────────────────────────────── */}
+            {/* Top customers */}
             {topCustomers.length > 0 && (
-              <View className="mb-2">
-                <View className="flex-row items-center justify-between mb-2.5">
+              <View style={{ marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <SectionLabel>Top Customers</SectionLabel>
-                  <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest opacity-50">By Spend</Text>
+                  <Text style={{ color: '#a8a29e', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5, opacity: 0.6 }}>By Spend</Text>
                 </View>
-                <View
-                  className="bg-white rounded-[22px] border border-card overflow-hidden"
-                  style={{ shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}
-                >
+                <View style={{ backgroundColor: '#ffffff', borderRadius: 22, borderWidth: 1, borderColor: '#ede9e3', overflow: 'hidden', shadowColor: '#c8c0b4', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}>
                   {topCustomers.map((c, i) => {
                     const initials = c.name?.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase()).join('') || '?';
                     return (
                       <View key={c._id}>
-                        <View className="flex-row items-center px-4 py-3.5">
-                          {/* Avatar */}
-                          <View className={`w-9 h-9 rounded-2xl items-center justify-center mr-3 flex-shrink-0 ${i === 0 ? 'bg-primaryText' : 'bg-card'}`}>
-                            <Text className={`font-black text-[12px] ${i === 0 ? 'text-accent' : 'text-secondaryText'}`}>{initials}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14 }}>
+                          <View style={{ width: 36, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: i === 0 ? '#1f2617' : '#f5f4f0', marginRight: 12, flexShrink: 0 }}>
+                            <Text style={{ fontWeight: '900', fontSize: 12, color: i === 0 ? '#e5fc01' : '#a8a29e' }}>{initials}</Text>
                           </View>
-                          <View className="flex-1">
-                            <Text className="text-primaryText font-bold text-[13px]" numberOfLines={1}>{c.name}</Text>
-                            <Text className="text-secondaryText text-[10px] font-bold mt-0.5">
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: '#1c1917', fontWeight: '700', fontSize: 13 }} numberOfLines={1}>{c.name}</Text>
+                            <Text style={{ color: '#a8a29e', fontSize: 10, fontWeight: '700', marginTop: 2 }}>
                               {c.billsCount} bill{c.billsCount !== 1 ? 's' : ''}
                               {c.udhaarBalance > 0 && (
-                                <Text className="text-red-400"> · ₹{c.udhaarBalance?.toLocaleString('en-IN')} pending</Text>
+                                <Text style={{ color: '#ef4444' }}> · ₹{c.udhaarBalance?.toLocaleString('en-IN')} pending</Text>
                               )}
                             </Text>
                           </View>
-                          <View className="items-end ml-2">
-                            <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest">Spent</Text>
-                            <Text className="text-primaryText font-black text-[14px] mt-0.5">{fmt(c.totalSpent)}</Text>
+                          <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+                            <Text style={{ color: '#a8a29e', fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 }}>Spent</Text>
+                            <Text style={{ color: '#1c1917', fontWeight: '900', fontSize: 14, marginTop: 2 }}>{fmt(c.totalSpent)}</Text>
                           </View>
                         </View>
                         {i < topCustomers.length - 1 && <Sep />}
@@ -414,48 +389,113 @@ export default function AnalyticsScreen() {
 
             {/* Empty state */}
             {!topProducts.length && !topCustomers.length && (
-              <View className="items-center py-16 opacity-30">
+              <View style={{ alignItems: 'center', paddingVertical: 64, opacity: 0.3 }}>
                 <Feather name="bar-chart-2" size={40} color="#bfb5a8" />
-                <Text className="text-secondaryText font-bold text-sm mt-3">No data for this period</Text>
+                <Text style={{ color: '#a8a29e', fontWeight: '700', fontSize: 14, marginTop: 12 }}>No data for this period</Text>
               </View>
             )}
 
           </ScrollView>
         )}
 
-        {/* ── Custom date modal ─────────────────────────────────────────────── */}
-        <Modal visible={showDateModal} transparent animationType="slide">
-          <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
-            <View className="bg-bg rounded-t-[44px] px-6 pt-5 pb-4">
-              <View className="w-10 h-1 bg-card rounded-full self-center mb-5" />
-              <View className="flex-row items-center justify-between mb-5">
-                <Text className="text-primaryText text-xl font-black">Custom Range</Text>
-                <TouchableOpacity onPress={() => setShowDateModal(false)} className="bg-card w-9 h-9 rounded-full items-center justify-center">
-                  <Feather name="x" size={17} color="#1f2617" />
-                </TouchableOpacity>
-              </View>
+        {/* ══════════════════════════════════════════════════════════
+            FILTER MODAL
+        ══════════════════════════════════════════════════════════ */}
+        <Modal visible={showFilterModal} transparent animationType="slide" onRequestClose={() => setShowFilterModal(false)}>
+          <Pressable
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' }}
+            onPress={() => setShowFilterModal(false)}
+          />
+          <View style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            backgroundColor: '#fafaf9',
+            borderTopLeftRadius: 32, borderTopRightRadius: 32,
+            paddingHorizontal: 24, paddingTop: 8,
+            paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+            shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 24, shadowOffset: { width: 0, height: -4 }, elevation: 20,
+          }}>
+            {/* Handle */}
+            <View style={{ width: 36, height: 4, backgroundColor: '#d6d3d1', borderRadius: 2, alignSelf: 'center', marginBottom: 20 }} />
 
-              {/* Date selectors */}
-              <View className="flex-row mb-4" style={{ gap: 10 }}>
-                {['start', 'end'].map(side => (
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+              <Text style={{ fontSize: 20, fontWeight: '900', color: '#1c1917', letterSpacing: -0.3 }}>Date Range</Text>
+              <TouchableOpacity
+                onPress={() => setShowFilterModal(false)}
+                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#e7e5e4', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Feather name="x" size={16} color="#1c1917" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick picks */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {DATE_FILTERS.filter(f => f.key !== 'custom').map(f => {
+                const active = localFilter === f.key;
+                return (
                   <TouchableOpacity
-                    key={side}
-                    onPress={() => setActivePicker(side)}
-                    activeOpacity={0.7}
-                    className={`flex-1 rounded-2xl border px-4 py-3.5 ${activePicker === side ? 'border-primaryText bg-primaryText/5' : 'border-card bg-white'}`}
+                    key={f.key}
+                    onPress={() => { setLocalFilter(f.key); setShowDatePicker(false); }}
+                    activeOpacity={0.75}
+                    style={{
+                      paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+                      borderWidth: 1.5,
+                      backgroundColor: active ? '#1f2617' : '#ffffff',
+                      borderColor: active ? '#1f2617' : '#e7e5e4',
+                    }}
                   >
-                    <Text className="text-secondaryText text-[9px] font-black uppercase tracking-widest mb-1">
-                      {side === 'start' ? 'From' : 'To'}
-                    </Text>
-                    <Text className="text-primaryText font-black text-[14px]">
-                      {(side === 'start' ? tempStart : tempEnd).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: active ? '#e5fc01' : '#44403c' }}>
+                      {f.label}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </View>
+                );
+              })}
+            </View>
 
-              {activePicker && (
-                <View className={`bg-white rounded-[22px] mb-4 overflow-hidden border border-card ${Platform.OS === 'ios' ? 'p-2' : ''}`}>
+            {/* Custom range pill */}
+            <TouchableOpacity
+              onPress={() => { setLocalFilter('custom'); setShowDatePicker(true); }}
+              activeOpacity={0.75}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+                paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginBottom: 12,
+                borderWidth: 1.5,
+                backgroundColor: localFilter === 'custom' ? '#1f2617' : '#ffffff',
+                borderColor: localFilter === 'custom' ? '#1f2617' : '#e7e5e4',
+              }}
+            >
+              <Feather name="calendar" size={13} color={localFilter === 'custom' ? '#e5fc01' : '#a8a29e'} />
+              <Text style={{ fontSize: 12, fontWeight: '800', color: localFilter === 'custom' ? '#e5fc01' : '#44403c' }}>
+                {localFilter === 'custom' && customRange?.start
+                  ? `${new Date(tempStart).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} – ${new Date(tempEnd).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
+                  : 'Custom Range'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Date picker (when custom selected) */}
+            {localFilter === 'custom' && showDatePicker && (
+              <View style={{ backgroundColor: '#ffffff', borderRadius: 20, borderWidth: 1, borderColor: '#e7e5e4', overflow: 'hidden', marginBottom: 12 }}>
+                <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e7e5e4' }}>
+                  {['start', 'end'].map(side => (
+                    <TouchableOpacity
+                      key={side}
+                      onPress={() => setActivePicker(side)}
+                      style={{
+                        flex: 1, paddingVertical: 12, alignItems: 'center',
+                        borderBottomWidth: 2,
+                        borderBottomColor: activePicker === side ? '#1f2617' : 'transparent',
+                      }}
+                    >
+                      <Text style={{ fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.5, color: '#a8a29e', marginBottom: 2 }}>
+                        {side === 'start' ? 'From' : 'To'}
+                      </Text>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: activePicker === side ? '#1f2617' : '#78716c' }}>
+                        {(side === 'start' ? tempStart : tempEnd).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {activePicker && (
                   <DateTimePicker
                     value={activePicker === 'start' ? tempStart : tempEnd}
                     mode="date"
@@ -464,16 +504,24 @@ export default function AnalyticsScreen() {
                     maximumDate={new Date()}
                     themeVariant="light"
                   />
-                </View>
-              )}
+                )}
+              </View>
+            )}
 
-              <TouchableOpacity
-                onPress={applyCustom}
-                className="bg-primaryText py-5 rounded-[22px] items-center mt-1 mb-6"
-              >
-                <Text className="text-accent font-black uppercase tracking-widest">Apply Filter</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Apply */}
+            <TouchableOpacity
+              onPress={applyFilters}
+              activeOpacity={0.85}
+              style={{
+                backgroundColor: '#1f2617', borderRadius: 20, paddingVertical: 17,
+                alignItems: 'center', marginTop: 4,
+                shadowColor: '#1f2617', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 6,
+              }}
+            >
+              <Text style={{ color: '#e5fc01', fontWeight: '900', fontSize: 13, textTransform: 'uppercase', letterSpacing: 2 }}>
+                Apply
+              </Text>
+            </TouchableOpacity>
           </View>
         </Modal>
 
