@@ -48,7 +48,7 @@ const billSchema = new Schema(
     created_by: { type: String, required: true },
     updated_by: { type: String },
     brand_converted_by: { type: String },
-    created_by_id: { type: Types.ObjectId, refPath: 'created_by_model' },
+    created_by_id: { type: Types.ObjectId },
 
     is_deleted: { type: Boolean, default: false },
     deleted_by: { type: String },

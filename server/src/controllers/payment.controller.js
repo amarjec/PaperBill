@@ -76,7 +76,8 @@ export const verifyPayment = async (req, res) => {
 
     // SECURITY CHECK: Prevent Double Processing if user clicks verify twice
     if (user.subscription?.last_order_id === razorpay_order_id) {
-      return res.status(200).json({ success: true, message: "Already Activated", user });
+      const { secure_pin, ...safeUser } = user.toObject();
+      return res.status(200).json({ success: true, message: "Already Activated", user: safeUser });
     }
 
     const plan = plans[planId];
@@ -107,10 +108,6 @@ export const verifyPayment = async (req, res) => {
     // Select a clean object before sending
     const { secure_pin, ...safeUser } = user.toObject();
     res.status(200).json({ success: true, message: "Premium Activated!", user: safeUser });
-
-    // Also fix the "Already Activated" early return:
-    const { secure_pin: _, ...safeUserEarly } = user.toObject();
-    return res.status(200).json({ success: true, message: "Already Activated", user: safeUserEarly });
 
   } catch (error) {
     console.error("Verify Error:", error);

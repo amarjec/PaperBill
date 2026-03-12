@@ -117,8 +117,41 @@ export const restoreItems = async (req, res) => {
           RESTORE_UPDATE,
         );
 
+      } else if (type === 'Bill') {
+        // Restore the bill and re-apply total_debt — NO KhataTransactions created.
+        // The passbook represents this as uncrossing the bill row and its original
+        // payment transactions. Creating new KhataTransaction records here would
+        // show up as duplicate "Payment Received" entries in the passbook.
+        const bill = await Bill.findOneAndUpdate(
+          { _id: id, owner_id, is_deleted: true },
+          RESTORE_UPDATE,
+          { new: true }
+        );
+
+        if (bill && !bill.is_estimate && bill.customer_id) {
+          const customerExists = await Customer.exists({
+            _id: bill.customer_id,
+            owner_id,
+            is_deleted: false,
+          });
+
+          if (!customerExists) {
+            // Customer was also deleted — strip the link to avoid ghost debt
+            await Bill.findByIdAndUpdate(id, { $unset: { customer_id: '' } });
+          } else {
+            // Re-add the debt that was reversed when the bill was deleted.
+            // Only touch total_debt — no new KhataTransactions.
+            const debtAmount = bill.total_amount - (bill.amount_paid || 0);
+            if (debtAmount > 0) {
+              await Customer.findByIdAndUpdate(bill.customer_id, {
+                $inc: { total_debt: debtAmount },
+              });
+            }
+          }
+        }
+
       } else {
-        // Customer, Product, Bill — restore as-is
+        // Customer, Product — restore as-is
         const Model = MODELS[type];
         if (Model) await Model.findOneAndUpdate({ _id: id, owner_id, is_deleted: true }, RESTORE_UPDATE);
       }
