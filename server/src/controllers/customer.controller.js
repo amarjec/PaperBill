@@ -121,18 +121,11 @@ export const updateKhataPayment = async (req, res) => {
       $inc: { total_debt: -appliedAmount },
     });
 
-    // Record the transaction
-    await KhataTransaction.create({
-      owner_id,
-      customer_id: customerId,
-      amount: appliedAmount,
-      type: "Payment",
-      received_by: user.name,
-    });
-
-    // FIX: Cascade uses `appliedAmount` (capped), NOT the raw `amount`.
-    // Previously the cascade used the uncapped value which could mark more bills as
-    // paid than the debt reduction accounted for, corrupting the ledger.
+    // Cascade payment across oldest unpaid bills first, oldest → newest.
+    // For each bill we create a SEPARATE KhataTransaction stamped with that
+    // bill's _id. This means the passbook can cross out exactly the right
+    // payment rows when a bill is later deleted — no ambiguity from a single
+    // lump-sum transaction that spans multiple bills.
     let remaining = appliedAmount;
 
     const unpaidBills = await Bill.find({
@@ -143,9 +136,12 @@ export const updateKhataPayment = async (req, res) => {
       is_deleted: false,
     }).sort({ createdAt: 1 });
 
+    const txnOps = [];
+
     for (const bill of unpaidBills) {
       if (remaining <= 0) break;
       const pendingOnBill = bill.total_amount - (bill.amount_paid || 0);
+      const appliedToBill = Math.min(remaining, pendingOnBill);
 
       if (remaining >= pendingOnBill) {
         bill.amount_paid = bill.total_amount;
@@ -156,8 +152,23 @@ export const updateKhataPayment = async (req, res) => {
         bill.status = "Partial";
         remaining = 0;
       }
-      await bill.save();
+
+      // One KhataTransaction per bill — stamped with bill_id so the passbook
+      // can group and cross it out if the bill is ever deleted or restored.
+      txnOps.push(
+        bill.save(),
+        KhataTransaction.create({
+          owner_id,
+          customer_id: customerId,
+          bill_id: bill._id,
+          amount: appliedToBill,
+          type: "Payment",
+          received_by: user.name,
+        })
+      );
     }
+
+    if (txnOps.length > 0) await Promise.all(txnOps);
 
     res
       .status(200)
@@ -183,7 +194,7 @@ export const getKhataByCustomerId = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Customer not found." });
 
-    const [unpaidBills, allBills, transactions] = await Promise.all([
+    const [unpaidBills, allBills, deletedBills, transactions] = await Promise.all([
       Bill.find({
         customer_id: customerId,
         owner_id,
@@ -197,7 +208,15 @@ export const getKhataByCustomerId = async (req, res) => {
         is_deleted: false,
         is_estimate: false,
       }).sort({ createdAt: -1 }),
-      // also return transaction history so the caller can show the full payment ledger
+      // Deleted bills included so passbook ledger stays balanced.
+      // Their reversal KhataTransactions still exist — without the original
+      // invoice row the running balance calculation goes wrong.
+      Bill.find({
+        customer_id: customerId,
+        owner_id,
+        is_deleted: true,
+        is_estimate: false,
+      }).select('bill_number total_amount amount_paid createdAt deleted_at deleted_by').sort({ createdAt: 1 }),
       KhataTransaction.find({ customer_id: customerId, owner_id }).sort({
         createdAt: -1,
       }),
@@ -208,7 +227,7 @@ export const getKhataByCustomerId = async (req, res) => {
       .json({
         success: true,
         customer,
-        khata: { unpaidBills, allBills, transactions },
+        khata: { unpaidBills, allBills, deletedBills, transactions },
       });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

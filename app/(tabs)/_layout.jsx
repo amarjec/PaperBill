@@ -3,9 +3,14 @@ import { Feather } from '@expo/vector-icons';
 import { View, Platform } from 'react-native';
 import GlobalHeader from '../../src/components/GlobalHeader';
 import { usePermission } from '@/src/hooks/usePermission';
+import { useKhataList } from '@/src/hooks/useKhataList';
 
 export default function TabLayout() {
   const { can } = usePermission();
+  const { debtors } = useKhataList(); 
+
+  // Determine if the tab should be shown
+  const showLedgerTab = can('khata', 'read') && debtors?.length > 0;
   return (
     <Tabs
       screenOptions={{
@@ -52,7 +57,7 @@ export default function TabLayout() {
         name="ledger"
         options={{
           title: 'Ledger',
-          href: can('khata', 'read') ? '/ledger' : null,
+          href: showLedgerTab ? '/ledger' : null,
           tabBarIcon: ({ color, focused }) => (
             <Feather name="book-open" size={22} color={color} />
           ),

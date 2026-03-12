@@ -80,6 +80,7 @@ export const createBill = async (req, res) => {
         await KhataTransaction.create({
           owner_id,
           customer_id,
+          bill_id: bill._id,
           amount: finalAmountPaid,
           type: "Payment",
           received_by: created_by,
@@ -215,6 +216,7 @@ export const updateBill = async (req, res) => {
         await KhataTransaction.create({
           owner_id,
           customer_id: originalBill.customer_id,
+          bill_id: originalBill._id,
           amount: paymentIncrease,
           type: "Payment",
           received_by: user.name,
@@ -250,24 +252,49 @@ export const softDeleteBill = async (req, res) => {
     });
 
     if (!bill.is_estimate && bill.customer_id) {
+      const khataOps = [];
       const debtToReverse = bill.total_amount - (bill.amount_paid || 0);
+      const auditLabel = `[Bill ${bill.bill_number} deleted by ${user.name}]`;
+
+      // ✅ FIX: Use plain $inc instead of aggregation pipeline syntax.
+      // The array-based pipeline update was crashing findByIdAndUpdate,
+      // causing the catch to return 500 — bill was deleted but the frontend
+      // received an error, showing a false "Failed to delete" alert.
       if (debtToReverse > 0) {
-        await Customer.findByIdAndUpdate(bill.customer_id, [
-          { $set: { total_debt: { $max: [{ $subtract: ['$total_debt', debtToReverse] }, 0] } } }
-        ]);
+        khataOps.push(
+          Customer.findByIdAndUpdate(bill.customer_id, {
+            $inc: { total_debt: -debtToReverse },
+          })
+        );
+        // Record debt reversal in ledger — reduces what customer owes
+        khataOps.push(
+          KhataTransaction.create({
+            owner_id,
+            customer_id: bill.customer_id,
+            bill_id: bill._id,
+            amount: debtToReverse,
+            type: "Payment",
+            received_by: auditLabel,
+          })
+        );
       }
 
-      // Reverse any payment transactions recorded against this bill
-      // by creating a corrective Credit entry so the ledger stays balanced
+      // Reverse the upfront payment — customer effectively "un-paid",
+      // so their debt goes back up via a Credit entry
       if ((bill.amount_paid || 0) > 0) {
-        await KhataTransaction.create({
-          owner_id,
-          customer_id: bill.customer_id,
-          amount: bill.amount_paid,
-          type: "Credit", // reversal — offsets the original Payment entry
-          received_by: user.name,
-        });
+        khataOps.push(
+          KhataTransaction.create({
+            owner_id,
+            customer_id: bill.customer_id,
+            bill_id: bill._id,
+            amount: bill.amount_paid,
+            type: "Credit",
+            received_by: auditLabel,
+          })
+        );
       }
+
+      if (khataOps.length > 0) await Promise.all(khataOps);
     }
 
     res
@@ -445,6 +472,7 @@ export const convertEstimateToBill = async (req, res) => {
           ? KhataTransaction.create({
               owner_id,
               customer_id: finalCustomerId,
+              bill_id: convertedBill._id,
               amount: finalAmountPaid,
               type: "Payment",
               received_by: user.name,

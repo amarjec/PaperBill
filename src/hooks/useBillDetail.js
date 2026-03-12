@@ -188,6 +188,9 @@ export function useBillDetail(billId) {
   const handleUpdatePayment = async () => {
     const newAmount = safeNum(paymentInput);
     if (newAmount <= 0) return Alert.alert("Error", "Invalid amount");
+    if (newAmount > safeNum(bill.total_amount)) {
+      return Alert.alert("Error", "Payment cannot exceed the total bill amount")
+    }
     const updatedTotalPaid = safeNum(bill.amount_paid) + newAmount;
     setIsProcessing(true);
     try {

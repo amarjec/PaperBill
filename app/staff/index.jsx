@@ -9,17 +9,12 @@ import { useRouter } from 'expo-router';
 import { useStaff } from '@/src/hooks/useStaff';
 import PremiumLock from '@/src/components/PremiumLock';
 
-// ─── Reusable permission row ───────────────────────────────────────────────────
-const PermRow = ({ label, description, value, onValueChange, disabled = false }) => (
+// ─── Slim Reusable Permission Row ──────────────────────────────────────────────
+const PermRow = ({ label, value, onValueChange, disabled = false, isLast = false }) => (
   <View
-    className={`flex-row items-center justify-between py-3 ${disabled ? 'opacity-40' : ''}`}
+    className={`flex-row items-center justify-between py-3 ${disabled ? 'opacity-40' : ''} ${!isLast ? 'border-b border-card/40' : ''}`}
   >
-    <View className="flex-1 pr-4">
-      <Text className="text-primaryText font-bold text-sm">{label}</Text>
-      {description ? (
-        <Text className="text-secondaryText text-[11px] mt-0.5">{description}</Text>
-      ) : null}
-    </View>
+    <Text className="text-primaryText font-bold text-[13px]">{label}</Text>
     <Switch
       value={value}
       onValueChange={disabled ? undefined : onValueChange}
@@ -27,26 +22,22 @@ const PermRow = ({ label, description, value, onValueChange, disabled = false })
       trackColor={{ false: '#e8e4de', true: '#1f2617' }}
       thumbColor={value ? '#e5fc01' : '#fff'}
       ios_backgroundColor="#e8e4de"
+      style={{ transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }} // Slimmer switches
     />
   </View>
 );
 
-// ─── Section wrapper ───────────────────────────────────────────────────────────
-const PermSection = ({ icon, title, children }) => (
-  <View className="bg-white rounded-[20px] border border-card mb-3 overflow-hidden">
-    {/* Section header */}
-    <View className="flex-row items-center gap-2.5 px-4 pt-4 pb-3 border-b border-card/60">
-      <View className="w-7 h-7 rounded-lg bg-primaryText/[0.07] items-center justify-center">
-        <Text style={{ fontSize: 14 }}>{icon}</Text>
-      </View>
-      <Text className="text-primaryText font-black text-sm tracking-tight">{title}</Text>
+// ─── Minimalist Group Wrapper ──────────────────────────────────────────────────
+const PermGroup = ({ title, children }) => (
+  <View className="mb-5">
+    <Text className="text-secondaryText text-[10px] uppercase font-black tracking-widest mb-1.5 ml-2">
+      {title}
+    </Text>
+    <View className="bg-white rounded-[20px] border border-card/60 px-4 shadow-sm" style={{ shadowColor: '#d8d0c4', shadowOpacity: 0.15, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }}>
+      {children}
     </View>
-    <View className="px-4 pb-1">{children}</View>
   </View>
 );
-
-// ─── Thin divider ─────────────────────────────────────────────────────────────
-const Divider = () => <View className="h-px bg-card/60" />;
 
 // ─── Staff card on list ────────────────────────────────────────────────────────
 const StaffCard = ({ staff, onEdit, onDelete }) => {
@@ -54,13 +45,11 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
   return (
     <View className="bg-white rounded-[24px] border border-card mb-3 px-5 py-4">
       <View className="flex-row items-center">
-        {/* Avatar */}
-        <View className="w-11 h-11 rounded-full bg-primaryText/[0.07] items-center justify-center mr-3">
-          <Text className="text-primaryText font-black text-base">
+        <View className="w-10 h-10 rounded-full bg-primaryText/[0.05] items-center justify-center mr-3">
+          <Text className="text-primaryText font-black text-sm">
             {staff.name?.charAt(0)?.toUpperCase() || '?'}
           </Text>
         </View>
-        {/* Info */}
         <View className="flex-1">
           <Text className="text-primaryText font-black text-[15px]" numberOfLines={1}>
             {staff.name}
@@ -69,12 +58,9 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
             {staff.phone_number}
           </Text>
         </View>
-        {/* Status pill */}
         <View
           className={`px-2.5 py-1 rounded-full border ${
-            isActive
-              ? 'bg-[#4ade80]/10 border-[#4ade80]/30'
-              : 'bg-red-500/10 border-red-400/30'
+            isActive ? 'bg-[#4ade80]/10 border-[#4ade80]/30' : 'bg-red-500/10 border-red-400/30'
           }`}
         >
           <Text
@@ -87,19 +73,12 @@ const StaffCard = ({ staff, onEdit, onDelete }) => {
         </View>
       </View>
 
-      {/* Actions */}
-      <View className="flex-row gap-2 mt-4 pt-3 border-t border-card/50">
-        <Pressable
-          onPress={onDelete}
-          className="flex-1 py-2.5 rounded-xl border border-red-100 bg-red-50 items-center active:opacity-60"
-        >
+      <View className="flex-row gap-2 mt-4 pt-3 border-t border-card/40">
+        <Pressable onPress={onDelete} className="flex-1 py-2.5 rounded-xl border border-red-100 bg-red-50 items-center active:opacity-60">
           <Text className="text-red-500 font-bold text-xs">Remove</Text>
         </Pressable>
-        <Pressable
-          onPress={onEdit}
-          className="flex-[2] py-2.5 rounded-xl bg-primaryText items-center active:opacity-70"
-        >
-          <Text className="text-accent font-black text-xs tracking-wide">Edit Details</Text>
+        <Pressable onPress={onEdit} className="flex-[2] py-2.5 rounded-xl bg-primaryText items-center active:opacity-70">
+          <Text className="text-accent font-black text-xs tracking-wide">Edit Permissions</Text>
         </Pressable>
       </View>
     </View>
@@ -129,6 +108,24 @@ function StaffManagementScreen() {
   const billsManaged       = p.bills.update && p.bills.delete;
   const khataManaged       = p.khata.update;
 
+  // ─── LOGIC FIX: Handle Khata + Customer Dependency ───
+  const handleKhataReadToggle = (val) => {
+    // 1. Trigger the normal khata toggle
+    toggleKhataRead(val);
+    
+    // 2. If turning ON khata, and customers are currently OFF, force customers ON
+    if (val && !p.customers.read) {
+      // Using setFormData directly to ensure state updates together cleanly
+      setFormData((prev) => ({
+        ...prev,
+        permissions: {
+          ...prev.permissions,
+          customers: { ...prev.permissions.customers, read: true }
+        }
+      }));
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-bg">
       {/* ── Header ── */}
@@ -136,17 +133,14 @@ function StaffManagementScreen() {
         <Pressable onPress={() => router.back()} className="bg-card w-10 h-10 rounded-2xl items-center justify-center active:opacity-50">
           <Feather name="arrow-left" size={18} color="#1f2617" />
         </Pressable>
-        <Text className="text-primaryText text-lg font-black">Staff Management</Text>
+        <Text className="text-primaryText text-lg font-black">Staff Setup</Text>
         <Pressable onPress={openAddModal} className="bg-primaryText w-10 h-10 rounded-2xl items-center justify-center active:opacity-50">
           <Feather name="plus" size={18} color="#e5fc01" />
         </Pressable>
       </View>
 
       {/* ── List ── */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-      >
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
         {loading ? (
           <ActivityIndicator size="large" color="#1f2617" style={{ marginTop: 48 }} />
         ) : staffList.length === 0 ? (
@@ -159,50 +153,35 @@ function StaffManagementScreen() {
           </View>
         ) : (
           staffList.map((staff) => (
-            <StaffCard
-              key={staff._id}
-              staff={staff}
-              onEdit={() => openEditModal(staff)}
-              onDelete={() => handleDelete(staff._id)}
-            />
+            <StaffCard key={staff._id} staff={staff} onEdit={() => openEditModal(staff)} onDelete={() => handleDelete(staff._id)} />
           ))
         )}
       </ScrollView>
 
       {/* ── Add / Edit Modal ── */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView className="flex-1 bg-bg">
+        <View className="flex-1 bg-bg pt-4">
 
           {/* Modal header */}
-          <View className="px-5 pt-2 pb-4 flex-row items-center justify-between border-b border-card/50">
+          <View className="px-5 pb-4 flex-row items-center justify-between">
             <Text className="text-primaryText text-xl font-black">
-              {isEditing ? 'Edit Staff' : 'New Staff'}
+              {isEditing ? 'Access Control' : 'New Member'}
             </Text>
-            <Pressable
-              onPress={() => setModalVisible(false)}
-              className="bg-card w-9 h-9 rounded-full items-center justify-center active:opacity-50"
-            >
-              <Feather name="x" size={17} color="#1f2617" />
+            <Pressable onPress={() => setModalVisible(false)} className="bg-card w-8 h-8 rounded-full items-center justify-center active:opacity-50">
+              <Feather name="x" size={16} color="#1f2617" />
             </Pressable>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-            keyboardShouldPersistTaps="handled"
-          >
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
 
             {/* ── Basic Info ── */}
-            <Text className="text-secondaryText text-[10px] uppercase font-bold tracking-widest mb-2 ml-1">
-              Basic Info
-            </Text>
-            <View className="bg-white rounded-[20px] border border-card mb-5 overflow-hidden">
+            <PermGroup title="Profile">
               <TextInput
                 value={formData.name}
                 onChangeText={v => setFormData({ ...formData, name: v })}
                 placeholder="Full Name"
                 placeholderTextColor="#b0a898"
-                className="px-4 py-4 font-bold text-primaryText text-sm border-b border-card/60"
+                className="py-3.5 font-bold text-primaryText text-[13px] border-b border-card/40"
               />
               <TextInput
                 value={formData.phone_number}
@@ -210,138 +189,72 @@ function StaffManagementScreen() {
                 placeholder="Phone Number"
                 placeholderTextColor="#b0a898"
                 keyboardType="phone-pad"
-                className="px-4 py-4 font-bold text-primaryText text-sm border-b border-card/60"
+                className="py-3.5 font-bold text-primaryText text-[13px] border-b border-card/40"
               />
               <TextInput
                 value={formData.assigned_pin}
                 onChangeText={v => setFormData({ ...formData, assigned_pin: v })}
-                placeholder={isEditing ? 'New PIN (leave blank to keep)' : '4-Digit PIN'}
+                placeholder={isEditing ? 'New PIN (Optional)' : '4-Digit Login PIN'}
                 placeholderTextColor="#b0a898"
                 keyboardType="numeric"
                 maxLength={4}
                 secureTextEntry
-                className="px-4 py-4 font-black text-primaryText text-sm text-center tracking-[8px]"
+                className="py-3.5 font-black text-primaryText text-[13px] tracking-[4px]"
               />
-            </View>
+            </PermGroup>
 
-            {/* ── Account Status ── */}
-            <View className="bg-white rounded-[20px] border border-card px-4 mb-6">
+            {/* ── Status ── */}
+            <PermGroup title="System">
               <PermRow
                 label="Account Active"
-                description="Suspended staff cannot log in."
                 value={formData.status === 'Active'}
-                onValueChange={val =>
-                  setFormData({ ...formData, status: val ? 'Active' : 'Suspended' })
-                }
+                onValueChange={val => setFormData({ ...formData, status: val ? 'Active' : 'Suspended' })}
+                isLast
               />
-            </View>
+            </PermGroup>
 
-            {/* ── Permissions ── */}
-            <Text className="text-secondaryText text-[10px] uppercase font-bold tracking-widest mb-3 ml-1">
-              Permissions
-            </Text>
+            {/* ── Grouped Permissions ── */}
+            {/* Billing Group */}
+            <PermGroup title="Billing & Sales">
+              <PermRow label="Create Bills" value={p.bills.create} onValueChange={toggleBillCreate} />
+              <PermRow label="Manage Bills" value={billsManaged} onValueChange={toggleManageBills} isLast />
+            </PermGroup>
 
-            {/* Inventory */}
-            <PermSection icon="🏷️" title="Category">
-              <PermRow
-                label="Manage Categories"
-                description="Add, edit and delete categories"
-                value={categoryManaged}
-                onValueChange={toggleManageCategory}
-              />
-            </PermSection>
+            {/* Ledger & Clients Group */}
+            <PermGroup title="Clients & Ledger">
+              <PermRow label="View Customers" value={p.customers.read} onValueChange={toggleCustomerRead} />
+              <PermRow label="Manage Customers" value={customersManaged} onValueChange={toggleManageCustomers} disabled={!p.customers.read} />
+              <PermRow label="View Ledger (Khata)" value={p.khata.read} onValueChange={handleKhataReadToggle} />
+              <PermRow label="Manage Ledger (Khata)" value={khataManaged} onValueChange={toggleManageKhata} disabled={!p.khata.read} isLast />
+            </PermGroup>
 
-            <PermSection icon="📂" title="Sub-Category">
-              <PermRow
-                label="Manage Sub-Categories"
-                description="Add, edit and delete sub-categories"
-                value={subCategoryManaged}
-                onValueChange={toggleManageSubCategory}
-              />
-            </PermSection>
-
-            <PermSection icon="📦" title="Products">
-              <PermRow
-                label="Manage Products"
-                description="Add, edit and delete products"
-                value={productsManaged}
-                onValueChange={toggleManageProducts}
-              />
-            </PermSection>
-
-            {/* Customers */}
-            <PermSection icon="👤" title="Customers">
-              <PermRow
-                label="View Customers"
-                description="Browse and search the customer list"
-                value={p.customers.read}
-                onValueChange={toggleCustomerRead}
-              />
-              <Divider />
-              <PermRow
-                label="Manage Customers"
-                description="Add, edit and delete customers"
-                value={customersManaged}
-                onValueChange={toggleManageCustomers}
-                disabled={!p.customers.read}
-              />
-            </PermSection>
-
-            {/* Bills */}
-            <PermSection icon="🧾" title="Bills">
-              <PermRow
-                label="Create Bill"
-                description="Generate new invoices"
-                value={p.bills.create}
-                onValueChange={toggleBillCreate}
-              />
-              <Divider />
-              <PermRow
-                label="Manage Bills"
-                description="Edit and delete existing bills"
-                value={billsManaged}
-                onValueChange={toggleManageBills}
-              />
-            </PermSection>
-
-            {/* Khata */}
-            <PermSection icon="📒" title="Khata">
-              <PermRow
-                label="View Khata"
-                description="See customer ledger and balances"
-                value={p.khata.read}
-                onValueChange={toggleKhataRead}
-              />
-              <Divider />
-              <PermRow
-                label="Manage Khata"
-                description="Record and settle payments"
-                value={khataManaged}
-                onValueChange={toggleManageKhata}
-                disabled={!p.khata.read}
-              />
-            </PermSection>
+            {/* Inventory Group */}
+            <PermGroup title="Inventory">
+              <PermRow label="Manage Categories" value={categoryManaged} onValueChange={toggleManageCategory} />
+              <PermRow label="Manage Sub-Categories" value={subCategoryManaged} onValueChange={toggleManageSubCategory} />
+              <PermRow label="Manage Products" value={productsManaged} onValueChange={toggleManageProducts} isLast />
+            </PermGroup>
 
           </ScrollView>
 
           {/* ── Save button ── */}
-          <View className="px-5 pb-6 pt-3 border-t border-card/50 bg-bg">
+          <View className="px-5 pb-8 pt-4 bg-white border-t border-card/40 shadow-xl">
             <Pressable
               onPress={handleSubmit}
               disabled={isProcessing}
-              className="bg-primaryText py-[18px] rounded-2xl items-center active:opacity-70"
+              className="bg-primaryText py-4 rounded-2xl items-center active:opacity-70"
             >
               {isProcessing ? (
                 <ActivityIndicator color="#e5fc01" />
               ) : (
-                <Text className="text-accent font-black text-sm uppercase tracking-widest">
-                  {isEditing ? 'Save Changes' : 'Add Staff Member'}
+                <Text className="text-accent font-black text-[13px] uppercase tracking-widest">
+                  {isEditing ? 'Update Access' : 'Create Staff Member'}
                 </Text>
               )}
             </Pressable>
           </View>
 
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -350,9 +263,9 @@ function StaffManagementScreen() {
 export default function StaffManagement() {
   return (
     <PremiumLock
-    featureName="Staff Management"
-    description="Add Staff with limited permission to delegate your work"
-    icon="delete-empty"
+      featureName="Staff Management"
+      description="Add Staff with limited permission to delegate your work securely."
+      icon="delete-empty"
     >
       <StaffManagementScreen />
     </PremiumLock>

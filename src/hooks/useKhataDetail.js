@@ -10,6 +10,7 @@ export function useKhataDetail(customerId) {
     customer: null,
     unpaidBills: [],
     allBills: [],
+    deletedBills: [],
     transactions: [],
   });
   const [loading, setLoading] = useState(true);
@@ -33,6 +34,7 @@ export function useKhataDetail(customerId) {
           customer: res.customer,
           unpaidBills: res.khata.unpaidBills || [],
           allBills: res.khata.allBills || [],
+          deletedBills: res.khata.deletedBills || [],
           transactions: res.khata.transactions || [],
         });
       }
