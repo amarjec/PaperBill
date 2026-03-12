@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity } from 'react-native';
+import { View, TextInput, Pressable, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 export const SearchBar = ({ value, onChangeText, placeholder = "Search..." }) => {
@@ -13,11 +13,22 @@ export const SearchBar = ({ value, onChangeText, placeholder = "Search..." }) =>
           value={value}
           onChangeText={onChangeText}
           className="flex-1 ml-3 text-primaryText font-bold text-base"
+          underlineColorAndroid="transparent" // Ensures no default Android input line appears
         />
         {value.length > 0 && (
-          <TouchableOpacity onPress={() => onChangeText('')} className="bg-bg p-1 rounded-full">
-            <Feather name="x" size={16} color="#1f2617" />
-          </TouchableOpacity>
+          // We wrap it in a view with a rounded-full radius to contain the borderless ripple slightly
+          <View className="rounded-full overflow-hidden">
+            <Pressable 
+              onPress={() => onChangeText('')} 
+              android_ripple={{ color: 'rgba(31, 38, 23, 0.2)', borderless: true }}
+              className="bg-bg p-1 rounded-full"
+              style={({ pressed }) => [
+                Platform.OS === 'ios' && pressed && { opacity: 0.6 }
+              ]}
+            >
+              <Feather name="x" size={16} color="#1f2617" />
+            </Pressable>
+          </View>
         )}
       </View>
     </View>

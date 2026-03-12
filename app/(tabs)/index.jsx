@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, Vibration } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert, KeyboardAvoidingView, Platform, Vibration, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -114,38 +114,117 @@ export default function HomeTab() {
       <FloatingButton onPress={openCreateModal} bottomOffset={30} />}
 
       {/* 1. Action Modal (Triggered by Long Press) */}
-      {(can('category', 'update') || can('category', 'delete'))&&
-      <Modal visible={actionModalVisible} transparent animationType="fade">
-        <TouchableOpacity activeOpacity={1} onPress={() => setActionModalVisible(false)} className="flex-1 bg-primaryText/40 justify-end">
-          <View className="bg-bg p-6 rounded-t-[40px] shadow-2xl">
-            <View className="w-12 h-1.5 bg-card rounded-full self-center mb-6" />
-            
-            <Text className="text-secondaryText text-xs font-black uppercase tracking-widest text-center mb-6">
-              {selectedCategory?.name || 'Category Options'}
-            </Text>
-            
-            {can('category', 'update') &&
-            <TouchableOpacity onPress={openEditModal} className="bg-white p-5 rounded-[24px] flex-row items-center mb-3 shadow-sm border border-card/40">
-              <View className="bg-bg p-2 rounded-full">
-                <Feather name="edit-2" size={18} color="#1f2617" />
-              </View>
-              <Text className="text-primaryText font-black text-base ml-4">Edit Category</Text>
-            </TouchableOpacity>}
+      {(can('category', 'update') || can('category', 'delete')) && (
+        <Modal visible={actionModalVisible} transparent animationType="fade">
+          <TouchableOpacity 
+            activeOpacity={1} 
+            onPress={() => setActionModalVisible(false)} 
+            className="flex-1 bg-black/40 justify-end" /* Darker, more standard backdrop */
+          >
+            {/* Prevent tapping inside the modal from closing it */}
+            <TouchableWithoutFeedback>
+              <View 
+                className="bg-bg p-6 rounded-t-[40px] shadow-2xl"
+                style={{ elevation: 24 }} // CRITICAL: Adds physical shadow on Android
+              >
+                <View className="w-12 h-1.5 bg-card rounded-full self-center mb-6" />
+                
+                <Text className="text-secondaryText text-xs font-black uppercase tracking-widest text-center mb-6">
+                  {selectedCategory?.name || 'Category Options'}
+                </Text>
+                
+                {can('category', 'update') && (
+                  <TouchableOpacity onPress={openEditModal} className="bg-white p-5 rounded-[24px] flex-row items-center mb-3 shadow-sm border border-card/40">
+                    <View className="bg-bg p-2 rounded-full">
+                      <Feather name="edit-2" size={18} color="#1f2617" />
+                    </View>
+                    <Text className="text-primaryText font-black text-base ml-4">Edit Category</Text>
+                  </TouchableOpacity>
+                )}
 
-            { can('category', 'delete') &&
-            <TouchableOpacity onPress={confirmDelete} className="bg-red-50 p-5 rounded-[24px] flex-row items-center mb-6 shadow-sm border border-red-100">
-              <View className="bg-red-100 p-2 rounded-full">
-                <Feather name="trash-2" size={18} color="#ef4444" />
-              </View>
-              <Text className="text-red-600 font-black text-base ml-4">Delete Category</Text>
-            </TouchableOpacity>}
+                {can('category', 'delete') && (
+                  <TouchableOpacity onPress={confirmDelete} className="bg-red-50 p-5 rounded-[24px] flex-row items-center mb-6 shadow-sm border border-red-100">
+                    <View className="bg-red-100 p-2 rounded-full">
+                      <Feather name="trash-2" size={18} color="#ef4444" />
+                    </View>
+                    <Text className="text-red-600 font-black text-base ml-4">Delete Category</Text>
+                  </TouchableOpacity>
+                )}
 
-            <TouchableOpacity onPress={() => setActionModalVisible(false)} className="py-4 items-center">
-              <Text className="text-secondaryText font-bold text-sm uppercase tracking-widest">Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>}
+                <TouchableOpacity onPress={() => setActionModalVisible(false)} className="py-4 items-center">
+                  <Text className="text-secondaryText font-bold text-sm uppercase tracking-widest">Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* 2. Form Modal (Create / Update) - FIXED FOR ANDROID KEYBOARD */}
+      <Modal visible={formModalVisible} transparent animationType="slide">
+        {/* The wrapper must be the outermost component inside the Modal */}
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} 
+          className="flex-1"
+        >
+          {/* Touchable background to dismiss keyboard/modal */}
+          <TouchableOpacity 
+            activeOpacity={1} 
+            onPress={Keyboard.dismiss} 
+            className="flex-1 justify-end bg-black/40"
+          >
+            {/* TouchableWithoutFeedback catches the tap inside the modal so it doesn't trigger the dismiss */}
+            <TouchableWithoutFeedback>
+              <View 
+                className="bg-bg p-8 rounded-t-[40px] shadow-2xl"
+                style={{ elevation: 24 }} // Android elevation
+              >
+                <View className="w-12 h-1.5 bg-card rounded-full self-center mb-6" />
+
+                <View className="flex-row justify-between items-center mb-8">
+                  <Text className="text-primaryText text-3xl font-black tracking-tight">
+                    {selectedCategory ? 'Edit Category' : 'New Category'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setFormModalVisible(false)} className="bg-card/50 p-2.5 rounded-full">
+                    <Feather name="x" size={20} color="#1f2617" />
+                  </TouchableOpacity>
+                </View>
+
+                <View className="mb-10">
+                  <Text className="text-secondaryText text-[11px] font-black uppercase tracking-widest ml-4 mb-3">Category Name</Text>
+                  <TextInput 
+                    autoFocus
+                    value={categoryName}
+                    onChangeText={setCategoryName}
+                    placeholder="e.g. Mobile Phones"
+                    placeholderTextColor="#bfb5a8"
+                    className="bg-white px-6 py-5 rounded-[28px] border border-card/60 text-primaryText font-black text-lg shadow-sm"
+                    // Fixes some Android text clipping issues
+                    underlineColorAndroid="transparent" 
+                  />
+                </View>
+
+                <TouchableOpacity 
+                  onPress={submitForm}
+                  disabled={isSubmitting}
+                  className="bg-primaryText py-5 rounded-[28px] flex-row justify-center items-center shadow-xl active:opacity-80"
+                  style={{ 
+                    shadowColor: '#1f2617', shadowOpacity: 0.2, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
+                    elevation: 10 // CRITICAL for Android shadow
+                  }}
+                >
+                  {isSubmitting ? <ActivityIndicator color="#e5fc01" /> : (
+                    <>
+                      <Text className="text-accent font-black text-sm tracking-widest uppercase mr-2">Save Category</Text>
+                      <Feather name="check" size={18} color="#e5fc01" />
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* 2. Form Modal (Create / Update) */}
       <Modal visible={formModalVisible} transparent animationType="slide">
