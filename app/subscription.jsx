@@ -25,12 +25,12 @@ export default function SubscriptionScreen() {
     if (!res.success) throw new Error("Failed to create order");
 
     const options = {
-      description: `PaperBill Premium - ${planId === 'yearly' ? 'Annual' : 'Monthly'} Plan`,
+      description: `KachaBill Premium - ${planId === 'yearly' ? 'Annual' : 'Monthly'} Plan`,
       image: 'https://your-logo-url.png', 
       currency: 'INR',
       key: RAZORPAY_KEY_ID,
       order_id: res.order.id, 
-      name: 'PaperBill Premium',
+      name: 'KachaBill Premium',
       prefill: {
         email: user?.email || '',
         contact: user?.phone_number || '',
