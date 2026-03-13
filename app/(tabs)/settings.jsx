@@ -212,9 +212,12 @@ export default function ProfileScreen() {
 
   if (loading || !profile) {
     return (
-      <SafeAreaView className="flex-1 bg-bg items-center justify-center">
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="large" color="#1f2617" />
-      </SafeAreaView>
+        <Text style={{ color: '#a8a29e', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, marginTop: 14, opacity: 0.6 }}>
+          Loading…
+        </Text>
+      </View>
     );
   }
 

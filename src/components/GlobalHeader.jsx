@@ -17,7 +17,7 @@ export default function GlobalHeader() {
 
   // --- DATA EXTRACTION ---
   // Owner sees Shop Name. Staff sees a generic title.
-  const titleText = isOwner ? user?.business_name || "PaperBill" : "PaperBill";
+  const titleText = isOwner ? user?.business_name || "KachaBill" : "KachaBill";
 
   // Owner sees Shop Address. Staff sees a welcome message with their name.
   const subtitleText = isOwner

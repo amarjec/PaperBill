@@ -31,8 +31,11 @@ export default function KhataScreen() {
 
       {/* List of Debtors */}
       {loading ? (
-        <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#e5fc01" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#1f2617" />
+          <Text style={{ color: '#a8a29e', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 2, marginTop: 14, opacity: 0.6 }}>
+            Loading…
+          </Text>
         </View>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">

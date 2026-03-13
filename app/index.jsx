@@ -17,14 +17,14 @@ export default function LoginScreen() {
         <View className="bg-secondaryText w-20 h-20 rounded-[28px] items-center justify-center border border-secondary/30 mb-6 shadow-sm">
           <MaterialCommunityIcons name="store-edit-outline" color="#e5fc01" size={40} />
         </View>
-        <Text className="text-primaryText text-5xl font-black tracking-tighter">Paper Bill</Text>
+        <Text className="text-primaryText text-5xl font-black tracking-tighter">Kacha Bill</Text>
         <Text className="text-secondary font-medium mt-2">Smart Billing for Modern Shops</Text>
       </View>
 
       {/* Feature Highlights */}
       <View className="gap-y-3">
         <FeatureItem icon="zap" text="Instant Digital Invoicing" />
-        <FeatureItem icon="shield" text="Secure Cloud Sync" />
+        <FeatureItem icon="shield" text="Secure Profit Tracking" />
       </View>
 
       {/* Action Section */}
@@ -68,7 +68,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <Text className="text-secondary text-center mt-6 text-[10px] font-bold uppercase tracking-widest opacity-40">
-          Secure Login • Paper Bill v2.0
+          Secure Login • KachaBill v2.0
         </Text>
       </View>
     </View>
