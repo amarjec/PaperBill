@@ -14,7 +14,7 @@ export const ownerGoogleLogin = async (req, res) => {
   try {
     const { body } = req;
     const { idToken, deviceId } = body;
-    
+
     if (!idToken || !deviceId) {
       return res.status(400).json({ success: false, message: 'idToken and deviceId are required' });
     }
@@ -23,9 +23,27 @@ export const ownerGoogleLogin = async (req, res) => {
     const { email, name, sub: google_id } = ticket.getPayload();
 
     let user = await User.findOne({ google_id });
+
     if (!user) {
-      user = await User.create({ google_id, email, name, device_id: deviceId });
+      // ── New user: grant a 90-day free trial ──────────────────────────────
+      const trialStart = new Date();
+      const trialEnd   = new Date(trialStart.getTime() + 90 * 24 * 60 * 60 * 1000);
+
+      user = await User.create({
+        google_id,
+        email,
+        name,
+        device_id: deviceId,
+        isPremium: true,
+        subscription: {
+          plan_name:  'trial',
+          status:     'active',
+          start_date: trialStart,
+          end_date:   trialEnd,
+        },
+      });
     } else {
+      // ── Returning user: just update device_id ────────────────────────────
       user.device_id = deviceId;
       await user.save();
     }
@@ -46,7 +64,6 @@ export const verifyStaffOtp = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Phone number, OTP, and deviceId are required' });
     }
 
-    // 👇 1. UPDATE THIS LINE TO POPULATE THE OWNER's PREMIUM DATA
     const staff = await Staff.findOne({ phone_number: phoneNumber })
       .populate('owner_id', 'isPremium subscription');
 
@@ -65,7 +82,7 @@ export const verifyStaffOtp = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid OTP' });
     }
 
-    staff.device_id   = deviceId;
+    staff.device_id    = deviceId;
     staff.assigned_pin = ''; // Invalidate one-time PIN after use
     await staff.save();
 
