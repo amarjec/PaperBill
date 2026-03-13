@@ -130,7 +130,7 @@ export function useStaff() {
     }));
   };
 
-  /** customers read toggle — turning off also disables manage */
+  /** customers read toggle — turning off also disables manage + khata */
   const toggleCustomerRead = (val) => {
     setFormData(prev => ({
       ...prev,
@@ -139,9 +139,12 @@ export function useStaff() {
         customers: {
           ...prev.permissions.customers,
           read: val,
-          // if read is revoked, manage must go too
           ...(val ? {} : { create: false, update: false, delete: false }),
         },
+        // if customer read is revoked, khata must go off too
+        ...(!val ? {
+          khata: { ...prev.permissions.khata, read: false, create: false, update: false, delete: false },
+        } : {}),
       },
     }));
   };
@@ -160,13 +163,13 @@ export function useStaff() {
   /** bills: create toggle */
   const toggleBillCreate = (val) => _setPermField('bills', 'create', val);
 
-  /** bills: manage → update+delete */
+  /** bills: manage → create+update+delete */
   const toggleManageBills = (val) => {
     setFormData(prev => ({
       ...prev,
       permissions: {
         ...prev.permissions,
-        bills: { ...prev.permissions.bills, update: val, delete: val },
+        bills: { ...prev.permissions.bills, create: val, update: val, delete: val },
       },
     }));
   };
@@ -180,14 +183,22 @@ export function useStaff() {
         khata: {
           ...prev.permissions.khata,
           read: val,
-          ...(val ? {} : { update: false }),
+          ...(val ? {} : { create: false, update: false, delete: false }),
         },
       },
     }));
   };
 
-  /** khata manage → update */
-  const toggleManageKhata = (val) => _setPermField('khata', 'update', val);
+  /** khata manage → create+update+delete */
+  const toggleManageKhata = (val) => {
+    setFormData(prev => ({
+      ...prev,
+      permissions: {
+        ...prev.permissions,
+        khata: { ...prev.permissions.khata, create: val, update: val, delete: val },
+      },
+    }));
+  };
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {

@@ -105,8 +105,8 @@ function StaffManagementScreen() {
   const subCategoryManaged = p.subCategory.create && p.subCategory.update && p.subCategory.delete;
   const productsManaged    = p.products.create && p.products.update && p.products.delete;
   const customersManaged   = p.customers.create && p.customers.update && p.customers.delete;
-  const billsManaged       = p.bills.update && p.bills.delete;
-  const khataManaged       = p.khata.update;
+  const billsManaged       = p.bills.create && p.bills.update && p.bills.delete;
+  const khataManaged       = p.khata.create && p.khata.update && p.khata.delete;
 
   // ─── LOGIC FIX: Handle Khata + Customer Dependency ───
   const handleKhataReadToggle = (val) => {
